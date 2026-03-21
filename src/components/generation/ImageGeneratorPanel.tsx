@@ -375,8 +375,8 @@ function ImageCard({
           onMouseLeave={hide}
           style={{
             position: "absolute",
-            bottom: "calc(100% + 8px)",
-            left: 0,
+            top: 0,
+            left: "calc(100% + 8px)",
             width: 260,
             zIndex: 50,
             background: "white",
