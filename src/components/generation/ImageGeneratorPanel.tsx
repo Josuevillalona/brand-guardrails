@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
+import { ImageMode } from "@/lib/image-scorer";
 import { ScoreBadge } from "@/components/scoring/ScoreBadge";
 import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
 
@@ -13,9 +14,16 @@ interface Props {
 
 let imgSeq = 0;
 
+const IMAGE_MODES: { value: ImageMode; label: string; description: string }[] = [
+  { value: "hero",       label: "Hero",       description: "Campaign & key brand imagery — full enforcement" },
+  { value: "supporting", label: "Supporting",  description: "Food, lifestyle, objects — aesthetic fit, natural subject colors" },
+  { value: "broll",      label: "B-roll",      description: "Texture, detail, abstract — mood & atmosphere only" },
+];
+
 export function ImageGeneratorPanel({ onClose }: Props) {
   const { brandKit, addImageElement, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
+  const [imageMode, setImageMode] = useState<ImageMode>("supporting");
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
@@ -53,7 +61,7 @@ export function ImageGeneratorPanel({ onClose }: Props) {
 
       // Step 2: Score each image in parallel — don't block image display
       newImages.forEach((img) => {
-        scoreImage(img.id, img.imageUrl);
+        scoreImage(img.id, img.imageUrl, userPrompt, imageMode);
       });
     } catch (err) {
       setGenError(err instanceof Error ? err.message : "Generation failed");
@@ -62,13 +70,13 @@ export function ImageGeneratorPanel({ onClose }: Props) {
     }
   }
 
-  async function scoreImage(id: string, imageUrl: string) {
+  async function scoreImage(id: string, imageUrl: string, userPrompt: string, mode: ImageMode) {
     if (!brandKit) return;
     try {
       const res = await fetch("/api/score-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, brandKit }),
+        body: JSON.stringify({ imageUrl, brandKit, userPrompt, imageMode: mode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -128,6 +136,45 @@ export function ImageGeneratorPanel({ onClose }: Props) {
         </div>
 
         <div className="canva-modal-body" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+
+          {/* Image mode selector */}
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-2)" }}>Image type</p>
+            <div className="flex gap-2u">
+              {IMAGE_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  onClick={() => setImageMode(mode.value)}
+                  title={mode.description}
+                  style={{
+                    flex: 1,
+                    padding: "var(--space-2) var(--space-3)",
+                    borderRadius: "var(--radius-md)",
+                    border: imageMode === mode.value
+                      ? "2px solid var(--canva-purple-500)"
+                      : "1px solid var(--color-border-default)",
+                    background: imageMode === mode.value
+                      ? "var(--canva-purple-50)"
+                      : "var(--color-bg-surface)",
+                    color: imageMode === mode.value
+                      ? "var(--canva-purple-600)"
+                      : "var(--color-text-secondary)",
+                    fontFamily: "var(--font-sans)",
+                    fontSize: "var(--text-sm)",
+                    fontWeight: imageMode === mode.value ? "var(--weight-bold)" : "var(--weight-medium)",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    transition: "all var(--transition-fast)",
+                  }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <p style={{ marginTop: "var(--space-1)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+              {IMAGE_MODES.find((m) => m.value === imageMode)?.description}
+            </p>
+          </div>
 
           {/* Prompt input */}
           <div>
@@ -210,9 +257,14 @@ export function ImageGeneratorPanel({ onClose }: Props) {
               }}
             >
               <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-3)" }}>
-                <p style={{ fontSize: "var(--text-md)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
-                  Brand score breakdown
-                </p>
+                <div>
+                  <p style={{ fontSize: "var(--text-md)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
+                    Brand score breakdown
+                  </p>
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                    Evaluated as: <strong style={{ textTransform: "capitalize" }}>{imageMode}</strong> image
+                  </p>
+                </div>
                 <ScoreBadge score={expanded.score} />
               </div>
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-4)" }}>

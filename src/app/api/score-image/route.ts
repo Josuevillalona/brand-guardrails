@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getScoringPrompt, parseScoringResponse } from "@/lib/image-scorer";
+import { getScoringPrompt, parseScoringResponse, ImageMode } from "@/lib/image-scorer";
 import { BrandKit } from "@/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageUrl, brandKit }: { imageUrl: string; brandKit: BrandKit } =
+    const {
+      imageUrl,
+      brandKit,
+      userPrompt = "",
+      imageMode = "hero",
+    }: { imageUrl: string; brandKit: BrandKit; userPrompt?: string; imageMode?: ImageMode } =
       await req.json();
 
     if (!imageUrl || !brandKit) {
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
             },
             {
               type: "text",
-              text: getScoringPrompt(brandKit),
+              text: getScoringPrompt(brandKit, userPrompt, imageMode),
             },
           ],
         },
@@ -57,7 +62,7 @@ export async function POST(req: NextRequest) {
       .map((block) => (block as { type: "text"; text: string }).text)
       .join("");
 
-    const score = parseScoringResponse(rawText);
+    const score = parseScoringResponse(rawText, imageMode);
 
     return NextResponse.json({ score });
   } catch (err) {

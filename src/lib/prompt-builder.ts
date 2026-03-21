@@ -40,16 +40,19 @@ export function buildStructuredBrandPrompt(
     `${brandKit.typographyPersonality} aesthetic`,
   ].join(", ");
 
-  // Block 3 — Color direction (descriptive names + temperature + saturation + color grade)
+  // Block 3 — Color direction
+  // Scoped to environment, background, and accent elements — NOT the subject itself.
+  // This prevents DALL-E applying brand palette to subject matter (e.g. charcoal-colored avocados).
   const colorNames = brandKit.colors
     .map((c) => c.descriptiveName)
     .slice(0, 4)
     .join(", ");
   const block3 = [
-    `color palette featuring ${colorNames}`,
+    `background and environmental tones: ${colorNames}`,
     `${brandKit.colorTemperature} color temperature`,
     `${brandKit.colorSaturation} saturation`,
     brandKit.colorGrade,
+    `subject rendered with natural authentic colors`,
   ].join(", ");
 
   // Block 4 — Lighting
