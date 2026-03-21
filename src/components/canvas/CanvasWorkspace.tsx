@@ -25,12 +25,24 @@ export function CanvasWorkspace() {
   } = useStore();
 
   const [showGenerator, setShowGenerator] = useState(false);
-  const [showScorePopover, setShowScorePopover] = useState(false);
+  const [showScoreTooltip, setShowScoreTooltip] = useState(false);
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Close score popover whenever selection changes
+  // Reset tooltip when selection changes or generator opens
   useEffect(() => {
-    setShowScorePopover(false);
-  }, [selectedElementId]);
+    setShowScoreTooltip(false);
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+  }, [selectedElementId, showGenerator]);
+
+  function showTooltipDelayed() {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    tooltipTimer.current = setTimeout(() => setShowScoreTooltip(true), 300);
+  }
+
+  function hideTooltip() {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    setShowScoreTooltip(false);
+  }
 
   const DRAG_THRESHOLD = 4; // px before a mousedown becomes a drag
 
@@ -177,8 +189,11 @@ export function CanvasWorkspace() {
         </IconItem>
       </div>
 
-      {/* ── Left panel — element list or brand summary ── */}
-      <div className="canva-panel" style={{ width: 200 }}>
+      {/* ── Left panel — layers/brand OR generator (Magic Media style) ── */}
+      {showGenerator && (
+        <ImageGeneratorPanel onClose={() => setShowGenerator(false)} />
+      )}
+      <div className="canva-panel" style={{ width: 200, display: showGenerator ? "none" : undefined }}>
         <div className="canva-panel-header">
           <p className="canva-panel-label">Layers</p>
         </div>
@@ -358,13 +373,6 @@ export function CanvasWorkspace() {
             const imageEl = selected.type === "image" ? (selected as ImageElement) : null;
             const imageScore = imageEl?.score && !imageEl.scorePending ? imageEl.score : null;
 
-            // Popover positioning: opposite side from toolbar
-            const POPOVER_W = 300;
-            const popoverTop = toolbarAbove
-              ? selected.y + selected.height + GAP
-              : aboveY - 220; // approximate popover height
-            const popoverLeft = Math.min(CANVAS_W - POPOVER_W - 4, Math.max(0, toolbarLeft));
-
             return (
               <>
                 {/* Toolbar */}
@@ -438,25 +446,16 @@ export function CanvasWorkspace() {
                     </>
                   )}
 
-                  {/* Image brand score row — only when score is resolved */}
+                  {/* Image brand score — hover to reveal full breakdown */}
                   {imageScore && (
                     <>
-                      <ScoreBadge score={imageScore} compact />
-                      <button
-                        onClick={() => setShowScorePopover((v) => !v)}
-                        style={{
-                          fontSize: "var(--text-xs)",
-                          color: showScorePopover ? "var(--canva-purple-500)" : "var(--color-text-muted)",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: "0 6px",
-                          fontFamily: "var(--font-sans)",
-                          whiteSpace: "nowrap",
-                        }}
+                      <div
+                        onMouseEnter={showTooltipDelayed}
+                        onMouseLeave={hideTooltip}
+                        style={{ display: "flex", alignItems: "center", padding: "0 4px", cursor: "default" }}
                       >
-                        {showScorePopover ? "Hide breakdown" : "See breakdown →"}
-                      </button>
+                        <ScoreBadge score={imageScore} compact />
+                      </div>
                       <ToolbarDivider />
                     </>
                   )}
@@ -506,36 +505,49 @@ export function CanvasWorkspace() {
                   </button>
                 </div>
 
-                {/* Score breakdown popover */}
-                {showScorePopover && imageScore && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    style={{
-                      position: "absolute",
-                      left: popoverLeft,
-                      top: popoverTop,
-                      width: POPOVER_W,
-                      zIndex: 29,
-                      background: "white",
-                      borderRadius: "var(--radius-lg)",
-                      padding: 16,
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.08)",
-                      border: "1px solid rgba(0,0,0,0.07)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
-                        Brand score breakdown
+                {/* Score breakdown tooltip — opacity transition, 300ms appear delay */}
+                {imageScore && (() => {
+                  const TOOLTIP_W = 280;
+                  const TOOLTIP_H = 280; // estimated for flip detection
+                  const ttLeft = Math.min(CANVAS_W - TOOLTIP_W - 4, Math.max(0, toolbarLeft));
+                  const ttTop = toolbarTop - TOOLTIP_H - 8 >= 0
+                    ? toolbarTop - TOOLTIP_H - 8
+                    : toolbarTop + TOOLBAR_H + 8;
+                  return (
+                    <div
+                      onMouseEnter={() => { if (tooltipTimer.current) clearTimeout(tooltipTimer.current); }}
+                      onMouseLeave={hideTooltip}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      style={{
+                        position: "absolute",
+                        left: ttLeft,
+                        top: ttTop,
+                        width: TOOLTIP_W,
+                        zIndex: 31,
+                        background: "white",
+                        borderRadius: "var(--radius-lg)",
+                        padding: 14,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.08)",
+                        border: "1px solid rgba(0,0,0,0.07)",
+                        opacity: showScoreTooltip ? 1 : 0,
+                        pointerEvents: showScoreTooltip ? "auto" : "none",
+                        transition: "opacity 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
+                          Brand score
+                        </p>
+                        <ScoreBadge score={imageScore} />
+                      </div>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
+                        {imageScore.explanation}
                       </p>
-                      <ScoreBadge score={imageScore} />
+                      <DimensionBreakdown score={imageScore} />
                     </div>
-                    <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
-                      {imageScore.explanation}
-                    </p>
-                    <DimensionBreakdown score={imageScore} />
-                  </div>
-                )}
+                  );
+                })()}
               </>
             );
           })()}
@@ -543,10 +555,6 @@ export function CanvasWorkspace() {
       </div>
 
 
-      {/* ── Image generator slide-in panel ── */}
-      {showGenerator && (
-        <ImageGeneratorPanel onClose={() => setShowGenerator(false)} />
-      )}
     </div>
   );
 }

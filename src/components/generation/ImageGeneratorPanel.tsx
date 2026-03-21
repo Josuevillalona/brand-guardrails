@@ -107,205 +107,234 @@ export function ImageGeneratorPanel({ onClose }: Props) {
     onClose();
   }
 
-  const expanded = images.find((img) => img.id === expandedId);
-
   return (
-    <div className="canva-modal-backdrop" onClick={onClose}>
-      <div
-        className="canva-modal"
-        style={{ maxWidth: 820, padding: 0, overflow: "hidden" }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="canva-panel"
+      style={{ width: 260, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+    >
+      {/* ── Header ── */}
+      <div className="canva-panel-header" style={{ padding: "12px 16px", flexShrink: 0 }}>
+        <p className="canva-panel-label" style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
+          Generate image
+        </p>
+      </div>
 
-        {/* ── Header ── */}
+      {/* ── Brand context row (brand-active only) ── */}
+      {brandKit && (
         <div style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 24px",
-          borderBottom: brandKit ? "none" : "1px solid #ebebeb",
+          gap: 8,
+          padding: "8px 16px",
+          background: "#f9f9f9",
+          borderBottom: "1px solid #ebebeb",
+          flexShrink: 0,
         }}>
-          <h2 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
-            Generate image
-          </h2>
-          <button className="btn-icon" onClick={onClose} style={{ fontSize: 18 }}>×</button>
-        </div>
-
-        {/* ── Brand context bar (brand-active only) ── */}
-        {brandKit && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "10px 24px",
-            background: "#f9f9f9",
-            borderBottom: "1px solid #ebebeb",
+          <div style={{ display: "flex", gap: 3 }}>
+            {brandKit.colors.slice(0, 3).map((c, i) => (
+              <div
+                key={i}
+                title={c.descriptiveName}
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 2,
+                  background: c.hex,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  flexShrink: 0,
+                }}
+              />
+            ))}
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 500, color: "#3d3d3d", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {brandKit.companyName}
+          </span>
+          <span style={{
+            fontSize: 10,
+            padding: "1px 6px",
+            borderRadius: 100,
+            background: "#f0f2ff",
+            border: "1px solid #d4b3fb",
+            color: "#6620c4",
+            fontWeight: 500,
+            flexShrink: 0,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", gap: 4 }}>
-                {brandKit.colors.slice(0, 3).map((c, i) => (
-                  <div
-                    key={i}
-                    title={c.descriptiveName}
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: 3,
-                      background: c.hex,
-                      border: "1px solid rgba(0,0,0,0.1)",
-                      flexShrink: 0,
-                    }}
-                  />
-                ))}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#3d3d3d" }}>
-                {brandKit.companyName}
-              </span>
-              <span style={{
-                fontSize: 11,
-                padding: "2px 8px",
-                borderRadius: 100,
-                background: "#f0f2ff",
-                border: "1px solid #d4b3fb",
-                color: "#6620c4",
-                fontWeight: 500,
-                textTransform: "capitalize",
-              }}>
-                {brandKit.renderStyle}
-              </span>
+            active
+          </span>
+        </div>
+      )}
+
+      {/* ── Scrollable middle — intent selector + image results ── */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px 0" }}>
+
+        {/* Intent mode selector — brand-active only */}
+        {brandKit && (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#a0a0a0",
+              margin: "0 0 6px",
+            }}>
+              Image intent
+            </p>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+              {IMAGE_MODES.map((mode, i) => (
+                <button
+                  key={mode.value}
+                  onClick={() => setImageMode(mode.value)}
+                  title={mode.description}
+                  style={{
+                    flex: 1,
+                    padding: "6px 4px",
+                    border: "none",
+                    borderLeft: i > 0 ? "1px solid #e0e0e0" : "none",
+                    background: imageMode === mode.value ? "#7d2ae7" : "transparent",
+                    color: imageMode === mode.value ? "#fff" : "#757575",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    fontFamily: "var(--font-sans)",
+                    cursor: "pointer",
+                    transition: "background 0.15s, color 0.15s",
+                  }}
+                >
+                  {mode.label}
+                </button>
+              ))}
             </div>
-            <span style={{ fontSize: 11, color: "#a0a0a0" }}>Brand context active</span>
           </div>
         )}
 
-        {/* ── Body ── */}
-        <div style={{
-          padding: "20px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-          overflowY: "auto",
-          maxHeight: "calc(90vh - 120px)",
-        }}>
-
-          {/* Intent mode selector — brand-active only */}
-          {brandKit && (
-            <div>
-              <p style={{
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#a0a0a0",
-                marginBottom: 8,
-                margin: "0 0 8px",
-              }}>
-                Image intent
-              </p>
-              <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e0e0e0" }}>
-                {IMAGE_MODES.map((mode, i) => (
-                  <button
-                    key={mode.value}
-                    onClick={() => setImageMode(mode.value)}
-                    title={mode.description}
-                    style={{
-                      flex: 1,
-                      padding: "7px 12px",
-                      border: "none",
-                      borderLeft: i > 0 ? "1px solid #e0e0e0" : "none",
-                      background: imageMode === mode.value ? "#7d2ae7" : "transparent",
-                      color: imageMode === mode.value ? "#fff" : "#757575",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      fontFamily: "var(--font-sans)",
-                      cursor: "pointer",
-                      transition: "background 0.15s, color 0.15s",
-                    }}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Prompt input */}
-          <div>
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    generate(prompt);
-                  }
+        {/* Generation loading skeleton — 2×1 while in flight */}
+        {generating && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            {[0, 1].map((i) => (
+              <div
+                key={i}
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: "var(--radius-lg)",
+                  background: "var(--canva-gray-100)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
                 }}
-                placeholder="Describe the image you want…"
-                rows={2}
-                disabled={generating}
-                className="canva-input flex-1"
-                style={{ resize: "none", lineHeight: 1.5 }}
-              />
-              <button
-                onClick={() => generate(prompt)}
-                disabled={generating || !prompt.trim()}
-                className="btn-ai"
-                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
               >
-                {generating ? "Generating…" : "✦ Generate"}
-              </button>
-            </div>
-            {genError && (
-              <p style={{ marginTop: 8, fontSize: "var(--text-sm)", color: "var(--color-score-off-brand)" }}>
-                {genError}
-              </p>
-            )}
+                <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3}s` }} />
+                <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.15}s` }} />
+                <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
+              </div>
+            ))}
           </div>
+        )}
 
+        {/* Image grid — 2×2, newest 4 images */}
+        {images.length > 0 && !generating && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            {images.slice(0, 4).map((img) => (
+              <ImageCard
+                key={img.id}
+                image={img}
+                expanded={expandedId === img.id}
+                onExpand={() => setExpandedId(expandedId === img.id ? null : img.id)}
+                onPlace={() => placeOnCanvas(img)}
+                onGetAlternative={() => generate(img.userPrompt, true, img.score?.failingDimension ?? null)}
+              />
+            ))}
+          </div>
+        )}
 
-          {/* Generation loading skeleton */}
-          {generating && (
-            <div className="grid grid-cols-2 gap-3u">
-              {[0, 1].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    aspectRatio: "1",
-                    borderRadius: "var(--radius-lg)",
-                    background: "var(--canva-gray-100)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "var(--space-2)",
-                  }}
-                >
-                  <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3}s` }} />
-                  <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.15}s` }} />
-                  <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
-                </div>
-              ))}
+        {/* Empty state — before first generation */}
+        {images.length === 0 && !generating && (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "32px 16px",
+            gap: 8,
+          }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "var(--canva-gray-100)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+              color: "var(--color-text-muted)",
+            }}>
+              ✦
             </div>
-          )}
+            <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textAlign: "center", lineHeight: 1.4, margin: 0 }}>
+              {brandKit
+                ? "Describe an image — it'll be generated and scored against your brand kit"
+                : "Describe an image to get started. Add a brand kit to enable scoring."}
+            </p>
+          </div>
+        )}
+      </div>
 
-          {/* Image grid */}
-          {images.length > 0 && !generating && (
-            <div className="grid grid-cols-2 gap-3u">
-              {images.slice(0, 6).map((img) => (
-                <ImageCard
-                  key={img.id}
-                  image={img}
-                  expanded={expandedId === img.id}
-                  onExpand={() => setExpandedId(expandedId === img.id ? null : img.id)}
-                  onPlace={() => placeOnCanvas(img)}
-                  onGetAlternative={() => generate(img.userPrompt, true, img.score?.failingDimension ?? null)}
-                />
-              ))}
-            </div>
-          )}
+      {/* ── Bottom — prompt input + actions ── */}
+      <div style={{
+        padding: "12px 12px 12px",
+        borderTop: "1px solid var(--color-border-subtle)",
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              generate(prompt);
+            }
+          }}
+          placeholder="Describe the image you want…"
+          rows={3}
+          disabled={generating}
+          className="canva-input"
+          style={{ resize: "none", lineHeight: 1.5, width: "100%", fontSize: "var(--text-sm)" }}
+        />
 
+        {genError && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", margin: 0 }}>
+            {genError}
+          </p>
+        )}
 
-        </div>
+        <button
+          onClick={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
+          disabled={generating || (!prompt.trim() && images.length === 0)}
+          className="btn-ai"
+          style={{ width: "100%", justifyContent: "center" }}
+        >
+          {generating ? "Generating…" : images.length > 0 ? "✦ Generate again" : "✦ Generate"}
+        </button>
+
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "var(--text-xs)",
+            color: "var(--color-text-muted)",
+            fontFamily: "var(--font-sans)",
+            padding: "2px 0",
+            textAlign: "center",
+            width: "100%",
+          }}
+        >
+          ← Go back
+        </button>
       </div>
     </div>
   );
@@ -376,11 +405,11 @@ function ImageCard({
         />
 
         {/* Badge overlay — top-left */}
-        <div style={{ position: "absolute", top: 8, left: 8 }}>
+        <div style={{ position: "absolute", top: 6, left: 6 }}>
           {image.noBrandContext ? (
-            <span className="score-badge-neutral">No brand context</span>
+            <span className="score-badge-neutral">No brand</span>
           ) : image.scorePending ? (
-            <span className="shimmer-pill">Analyzing brand alignment…</span>
+            <span className="shimmer-pill">Analyzing…</span>
           ) : score ? (
             <button
               onClick={onExpand}
@@ -394,15 +423,15 @@ function ImageCard({
 
       {/* Scoring skeleton bars — brand images while score is in flight */}
       {!image.noBrandContext && image.scorePending && (
-        <div style={{ padding: "10px 12px 8px", borderTop: "1px solid #f5f5f5" }}>
+        <div style={{ padding: "8px 8px 6px", borderTop: "1px solid #f5f5f5" }}>
           {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="shimmer-bar"
               style={{
-                height: 5,
-                borderRadius: 3,
-                marginBottom: i < 2 ? 6 : 0,
+                height: 4,
+                borderRadius: 2,
+                marginBottom: i < 2 ? 5 : 0,
                 width: `${88 - i * 16}%`,
                 animationDelay: `${i * 120}ms`,
               }}
@@ -418,9 +447,9 @@ function ImageCard({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 4,
             width: "100%",
-            padding: "8px 12px",
+            padding: "6px 8px",
             background: "none",
             border: "none",
             borderTop: "1px solid #f5f5f5",
@@ -430,7 +459,7 @@ function ImageCard({
         >
           <span style={{
             flex: 1,
-            fontSize: 11,
+            fontSize: 10,
             color: "#757575",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -438,14 +467,14 @@ function ImageCard({
           }}>
             {score.explanation}
           </span>
-          <span style={{ fontSize: 10, color: "#a0a0a0", flexShrink: 0 }}>▸</span>
+          <span style={{ fontSize: 9, color: "#a0a0a0", flexShrink: 0 }}>▸</span>
         </button>
       )}
 
       {/* Expanded dimension breakdown — within card */}
       {score && !image.scorePending && expanded && (
-        <div style={{ padding: "12px 12px 6px", borderTop: "1px solid #f5f5f5" }}>
-          <p style={{ fontSize: 11, color: "#757575", lineHeight: 1.45, marginBottom: 10 }}>
+        <div style={{ padding: "10px 8px 6px", borderTop: "1px solid #f5f5f5" }}>
+          <p style={{ fontSize: 10, color: "#757575", lineHeight: 1.4, marginBottom: 8 }}>
             {score.explanation}
           </p>
 
@@ -454,16 +483,16 @@ function ImageCard({
             const isFailing = key === score.failingDimension;
             const color = dimColor(val);
             return (
-              <div key={key} style={{ marginBottom: 7 }}>
+              <div key={key} style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 9,
                     color: isFailing ? "var(--color-score-off-brand)" : "#757575",
                     fontWeight: isFailing ? 600 : 400,
                   }}>
-                    {DIM_LABELS_SHORT[key]}{isFailing ? " ← primary drift" : ""}
+                    {DIM_LABELS_SHORT[key]}{isFailing ? " ←" : ""}
                   </span>
-                  <span style={{ fontSize: 10, color, fontWeight: 600 }}>{val}</span>
+                  <span style={{ fontSize: 9, color, fontWeight: 600 }}>{val}</span>
                 </div>
                 <div style={{ height: 3, borderRadius: 2, background: "#f0f0f0" }}>
                   <div style={{ height: "100%", width: `${val}%`, borderRadius: 2, background: color }} />
@@ -478,28 +507,29 @@ function ImageCard({
               display: "block",
               width: "100%",
               textAlign: "center",
-              fontSize: 10,
+              fontSize: 9,
               color: "#a0a0a0",
               background: "none",
               border: "none",
               cursor: "pointer",
-              padding: "6px 0 2px",
+              padding: "4px 0 0",
             }}
           >
-            ▴ Hide breakdown
+            ▴ Hide
           </button>
         </div>
       )}
 
-      {/* Actions */}
+      {/* Actions — stacked layout for narrow cards */}
       <div style={{
         display: "flex",
-        gap: 8,
-        padding: "var(--space-3)",
+        flexDirection: "column",
+        gap: 4,
+        padding: "6px 8px 8px",
         borderTop: "1px solid var(--color-border-subtle)",
       }}>
         {isOnBrand ? (
-          <button onClick={onPlace} className="btn-primary" style={{ flex: 1, justifyContent: "center" }}>
+          <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
             Use this image
           </button>
         ) : prohibited ? (
@@ -507,7 +537,7 @@ function ImageCard({
             <button
               onClick={onGetAlternative}
               className="btn-ai"
-              style={{ flex: 1, justifyContent: "center" }}
+              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
               title="Re-generate avoiding prohibited elements"
             >
               ✦ Regenerate
@@ -515,16 +545,14 @@ function ImageCard({
             <button
               onClick={onPlace}
               style={{
-                flex: 1,
-                justifyContent: "center",
-                padding: "0 12px",
-                border: "1px solid var(--color-border-default)",
-                borderRadius: "var(--radius-md)",
                 background: "none",
-                fontSize: "var(--text-xs)",
-                color: "var(--color-text-secondary)",
+                border: "none",
                 cursor: "pointer",
+                fontSize: 10,
+                color: "var(--color-text-muted)",
                 fontFamily: "var(--font-sans)",
+                padding: "2px 0",
+                textAlign: "center",
               }}
             >
               Use anyway
@@ -535,7 +563,7 @@ function ImageCard({
             <button
               onClick={onGetAlternative}
               className="btn-ai"
-              style={{ flex: 1, justifyContent: "center" }}
+              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
               title={`Re-generate targeting: ${score.failingDimension ?? "overall"}`}
             >
               ✦ Improve {failLabel}
@@ -543,23 +571,21 @@ function ImageCard({
             <button
               onClick={onPlace}
               style={{
-                flex: 1,
-                justifyContent: "center",
-                padding: "0 12px",
-                border: "1px solid var(--color-border-default)",
-                borderRadius: "var(--radius-md)",
                 background: "none",
-                fontSize: "var(--text-xs)",
-                color: "var(--color-text-secondary)",
+                border: "none",
                 cursor: "pointer",
+                fontSize: 10,
+                color: "var(--color-text-muted)",
                 fontFamily: "var(--font-sans)",
+                padding: "2px 0",
+                textAlign: "center",
               }}
             >
               Use anyway
             </button>
           </>
         ) : (
-          <button onClick={onPlace} className="btn-primary" style={{ flex: 1, justifyContent: "center" }}>
+          <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
             Use this image
           </button>
         )}
