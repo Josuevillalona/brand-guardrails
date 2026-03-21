@@ -2,15 +2,12 @@ import { BrandKit } from "@/types";
 
 // Universal quality exclusions — fire on every call regardless of brand rules
 const UNIVERSAL_NEGATIVE = [
-  "stock photo staging",
+  "stock photo clichés",
   "lens flare",
-  "HDR over-processing",
   "clip art",
   "watermark",
-  "blurry",
   "low quality",
   "pixelated",
-  "oversaturated",
   "generic corporate imagery",
 ];
 
@@ -18,7 +15,12 @@ const UNIVERSAL_NEGATIVE = [
  * Assembles a 7-block structured prompt in canonical order:
  * Subject → Style base → Color direction → Lighting → Composition → Mood → Negative block
  *
- * Color direction uses descriptive names (e.g. "deep navy blue"), NOT hex values.
+ * Full 18-field Brand Kit integrated:
+ * - Block 2: renderStyle + depthOfField + cameraAngle + typographyPersonality aesthetic
+ * - Block 3: colors + colorTemperature + colorSaturation + colorGrade
+ * - Block 5: shotType + negativeSpace + environmentalContext + aspectRatioConvention
+ *
+ * Color direction uses descriptive names, NOT hex values.
  * The negative block is mandatory and always fires.
  */
 export function buildStructuredBrandPrompt(
@@ -29,31 +31,49 @@ export function buildStructuredBrandPrompt(
   const block1 = userPrompt.trim();
 
   // Block 2 — Style base
-  const block2 = `${brandKit.renderStyle} style, professional quality, high detail`;
+  // Uses photography-specific language instead of "professional quality, high detail"
+  // which is a known DALL-E over-render trigger
+  const block2 = [
+    `${brandKit.renderStyle} style`,
+    brandKit.depthOfField,
+    `${brandKit.cameraAngle} camera angle`,
+    `${brandKit.typographyPersonality} aesthetic`,
+  ].join(", ");
 
-  // Block 3 — Color direction (descriptive names + temperature + saturation — never hex)
+  // Block 3 — Color direction (descriptive names + temperature + saturation + color grade)
   const colorNames = brandKit.colors
     .map((c) => c.descriptiveName)
     .slice(0, 4)
     .join(", ");
-  const block3 = `color palette featuring ${colorNames}, ${brandKit.colorTemperature} color temperature, ${brandKit.colorSaturation} saturation`;
+  const block3 = [
+    `color palette featuring ${colorNames}`,
+    `${brandKit.colorTemperature} color temperature`,
+    `${brandKit.colorSaturation} saturation`,
+    brandKit.colorGrade,
+  ].join(", ");
 
   // Block 4 — Lighting
   const block4 = `${brandKit.lightingStyle}, ${brandKit.lightingTemperature} lighting`;
 
-  // Block 5 — Composition
-  const block5 = `${brandKit.shotType} shot, ${brandKit.negativeSpace} negative space, clean composition`;
+  // Block 5 — Composition (shot type + negative space + environment + aspect ratio)
+  const block5 = [
+    `${brandKit.shotType} shot`,
+    `${brandKit.negativeSpace} negative space`,
+    brandKit.environmentalContext,
+    `${brandKit.aspectRatioConvention} composition`,
+  ].join(", ");
 
   // Block 6 — Mood
   const moodStr = brandKit.moodAdjectives.slice(0, 3).join(", ");
   const block6 = `${moodStr} mood and atmosphere`;
 
   // Block 7 — Negative block (brand-specific + universal)
+  // DALL-E 3 uses natural language — no Midjourney-style --no syntax
   const brandNegatives = brandKit.prohibitedElements.length > 0
     ? brandKit.prohibitedElements
     : [];
   const allNegatives = Array.from(new Set([...brandNegatives, ...UNIVERSAL_NEGATIVE]));
-  const block7 = `--no ${allNegatives.join(", ")}`;
+  const block7 = `Do not include: ${allNegatives.join(", ")}`;
 
   return [block1, block2, block3, block4, block5, block6, block7].join(". ");
 }
@@ -61,6 +81,7 @@ export function buildStructuredBrandPrompt(
 /**
  * Builds a targeted alternative prompt that reinforces the failing dimension.
  * Called when the user clicks "Get on-brand version" on a low-scoring image.
+ * Reinforcements now reference the full 18-field kit.
  */
 export function buildAlternativePrompt(
   userPrompt: string,
@@ -72,17 +93,35 @@ export function buildAlternativePrompt(
   if (!failingDimension) return base;
 
   const reinforcements: Record<string, string> = {
-    colorAlignment: `strictly adhering to brand colors ${brandKit.colors.map((c) => c.descriptiveName).join(" and ")}, no off-palette colors`,
-    renderStyleMatch: `strongly ${brandKit.renderStyle} visual style, consistent artistic medium throughout`,
-    moodLighting: `${brandKit.moodAdjectives.join(", ")} emotional tone, ${brandKit.lightingStyle}`,
-    compositionFit: `${brandKit.shotType} framing, ${brandKit.negativeSpace} negative space, centered composition`,
-    overallCohesion: `cohesive brand identity, unified visual language, consistent aesthetic throughout`,
+    colorAlignment: [
+      `strictly adhering to brand colors ${brandKit.colors.map((c) => c.descriptiveName).join(" and ")}`,
+      `no off-palette colors`,
+      brandKit.colorGrade,
+    ].join(", "),
+    renderStyleMatch: [
+      `strongly ${brandKit.renderStyle} visual style`,
+      `consistent artistic medium throughout`,
+      brandKit.depthOfField,
+      `${brandKit.cameraAngle} angle`,
+    ].join(", "),
+    moodLighting: [
+      `${brandKit.moodAdjectives.join(", ")} emotional tone`,
+      brandKit.lightingStyle,
+      `${brandKit.environmentalContext}`,
+    ].join(", "),
+    compositionFit: [
+      `${brandKit.shotType} framing`,
+      `${brandKit.negativeSpace} negative space`,
+      brandKit.environmentalContext,
+      brandKit.aspectRatioConvention,
+    ].join(", "),
+    overallCohesion: `cohesive brand identity, unified visual language, consistent aesthetic throughout, ${brandKit.typographyPersonality} aesthetic register`,
   };
 
   const extra = reinforcements[failingDimension];
   if (!extra) return base;
 
   // Insert reinforcement before the negative block
-  const parts = base.split(". --no ");
-  return `${parts[0]}, ${extra}. --no ${parts[1]}`;
+  const parts = base.split(". Do not include: ");
+  return `${parts[0]}, ${extra}. Do not include: ${parts[1]}`;
 }

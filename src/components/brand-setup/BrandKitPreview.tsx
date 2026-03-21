@@ -91,6 +91,46 @@ export function BrandKitPreview({ brandKit, onUpdate }: Props) {
         </div>
       </Section>
 
+      {/* Extended fields — 2 col grid */}
+      <Section label="">
+        <div className="grid grid-cols-2 gap-4u">
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Depth of field</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.depthOfField}</p>
+          </div>
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Camera angle</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.cameraAngle}</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section label="">
+        <div className="grid grid-cols-2 gap-4u">
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Color grade</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.colorGrade}</p>
+          </div>
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Aspect ratio</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.aspectRatioConvention}</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section label="">
+        <div className="grid grid-cols-2 gap-4u">
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Environment</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.environmentalContext}</p>
+          </div>
+          <div>
+            <p className="canva-panel-label" style={{ marginBottom: "var(--space-1)" }}>Typography</p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-primary)" }}>{brandKit.typographyPersonality}</p>
+          </div>
+        </div>
+      </Section>
+
       {/* Voice */}
       <Section label="Brand voice">
         <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-relaxed)" }}>

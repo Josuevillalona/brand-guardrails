@@ -24,6 +24,7 @@ export type NegativeSpace = "airy" | "balanced" | "dense";
 export type LightingTemperature = "warm" | "cool" | "neutral";
 
 export interface BrandKit {
+  // ── Core 12 fields ──────────────────────────────────────────────────────────
   companyName: string;
   url: string;
   voiceSummary: string;
@@ -32,11 +33,19 @@ export interface BrandKit {
   colorSaturation: ColorSaturation;
   renderStyle: RenderStyle;
   moodAdjectives: string[]; // max 3
-  lightingStyle: string; // e.g. "soft natural window light"
+  lightingStyle: string;
   lightingTemperature: LightingTemperature;
   shotType: ShotType;
   negativeSpace: NegativeSpace;
-  prohibitedElements: string[]; // always populated — minimum universal defaults
+  prohibitedElements: string[];
+
+  // ── Extended 6 fields (full 18-field kit) ───────────────────────────────────
+  depthOfField: string;        // e.g. "shallow depth of field, f/1.8 bokeh background separation"
+  colorGrade: string;          // e.g. "desaturated highlights, warm lifted shadows, low contrast matte"
+  environmentalContext: string; // e.g. "minimalist studio with clean architectural details"
+  cameraAngle: string;         // e.g. "eye level", "slight low angle conveying authority"
+  aspectRatioConvention: string; // e.g. "landscape 16:9", "portrait 4:5 for social"
+  typographyPersonality: string; // e.g. "geometric sans-serif", "classic serif editorial"
 }
 
 // ─── Brand Score ──────────────────────────────────────────────────────────────
