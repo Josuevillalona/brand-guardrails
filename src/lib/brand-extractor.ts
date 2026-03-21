@@ -2,14 +2,28 @@ import { BrandKit } from "@/types";
 
 /**
  * Returns the Claude system prompt for brand extraction.
- * Claude receives Firecrawl markdown and must return a valid BrandKit JSON.
+ * When a screenshot is available, Claude is instructed to read visual signals from pixels,
+ * not from copy. When markdown-only, falls back to text inference.
  */
-export function getBrandExtractionPrompt(): string {
-  return `You are a brand analyst. You will receive the scraped markdown content of a company website.
-Extract a structured Brand Kit JSON object. Be analytical and precise — infer from visual descriptions,
-copy tone, product imagery descriptions, and design language cues in the text.
+export function getBrandExtractionPrompt(hasScreenshot: boolean): string {
+  const visualInstructions = hasScreenshot
+    ? `You will receive a SCREENSHOT of the website homepage and its scraped MARKDOWN text.
 
-Return ONLY valid JSON matching this exact schema. No markdown, no explanation, just the JSON object.
+IMPORTANT — source partitioning:
+- Read ALL visual signals from the SCREENSHOT only:
+  colors (sample actual hex values from rendered pixels), render style, lighting character,
+  shot type conventions in photography, color temperature, saturation level, negative space usage.
+- Read these fields from the MARKDOWN only:
+  companyName, voiceSummary, prohibitedElements (inferred from messaging/positioning), company context.
+- Do NOT infer visual signals from copy. If the copy says "bold and modern", ignore it for color/style.
+  Look at what the site actually renders.`
+    : `You will receive scraped MARKDOWN text from a company website.
+Infer all brand signals analytically from copy tone, product descriptions, and design language cues in the text.`;
+
+  return `You are a brand analyst extracting a structured Brand Kit for use in AI image generation.
+${visualInstructions}
+
+Return ONLY valid JSON matching this exact schema. No markdown fences, no explanation, just the JSON object.
 
 Schema:
 {
@@ -19,7 +33,7 @@ Schema:
   "colors": [
     {
       "hex": "#RRGGBB",
-      "descriptiveName": "string (e.g. 'deep navy blue with cool undertones' — be descriptive, this goes into image prompts)",
+      "descriptiveName": "string (e.g. 'deep navy blue with cool undertones' — evocative, goes directly into image generation prompts)",
       "role": "primary|secondary|accent|background|text"
     }
   ],
@@ -35,14 +49,11 @@ Schema:
 }
 
 Rules:
-- colors: 3–6 entries. descriptiveName MUST be evocative and model-friendly (e.g. "rich emerald green" not "#2ECC71").
+- colors: 3–6 entries. descriptiveName MUST be evocative and model-friendly ("rich emerald green", not "#2ECC71").
 - moodAdjectives: exactly 3 adjectives, brand-appropriate.
-- prohibitedElements: always include at least 3 specific items that would be off-brand
-  (e.g. "competing brand logos", "dark gothic imagery", "childish cartoon characters").
-  If no brand-specific rules are evident, use universal sensible defaults.
-- renderStyle: infer from the site's visual language — tech companies tend toward clean/editorial,
-  consumer brands toward photorealistic, startups toward flat-vector or illustrated.
-- If you cannot confidently infer a field, make a reasonable brand-appropriate default.`;
+- prohibitedElements: at least 3 specific off-brand items. Use brand-specific rules if evident;
+  otherwise sensible defaults (e.g. "competing brand logos", "dark gothic imagery", "childish cartoon characters").
+- If you cannot confidently determine a field, make a reasonable brand-appropriate default.`;
 }
 
 /**
