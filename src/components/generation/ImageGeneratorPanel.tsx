@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
 import { ImageMode } from "@/lib/image-scorer";
 import { ScoreBadge } from "@/components/scoring/ScoreBadge";
+import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
 
 interface Props {
   onClose: () => void;
@@ -27,7 +28,6 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function generate(
     userPrompt: string,
@@ -199,8 +199,6 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
               <ImageCard
                 key={img.id}
                 image={img}
-                expanded={expandedId === img.id}
-                onExpand={() => setExpandedId(expandedId === img.id ? null : img.id)}
                 onPlace={() => placeOnCanvas(img)}
                 onGetAlternative={() => generate(img.userPrompt, true, img.score?.failingDimension ?? null)}
               />
@@ -337,30 +335,13 @@ const DIM_LABELS_SHORT: Record<string, string> = {
   overallCohesion: "Overall feel",
 };
 
-const DIM_KEYS = [
-  "colorAlignment",
-  "renderStyleMatch",
-  "moodLighting",
-  "compositionFit",
-  "overallCohesion",
-] as const;
-
-function dimColor(val: number) {
-  if (val >= 80) return "var(--color-score-on-brand)";
-  if (val >= 50) return "var(--color-score-needs-review)";
-  return "var(--color-score-off-brand)";
-}
 
 function ImageCard({
   image,
-  expanded,
-  onExpand,
   onPlace,
   onGetAlternative,
 }: {
   image: GeneratedImage;
-  expanded: boolean;
-  onExpand: () => void;
   onPlace: () => void;
   onGetAlternative: () => void;
 }) {
@@ -369,15 +350,58 @@ function ImageCard({
   const isOnBrand  = score?.label === "on-brand";
   const failLabel  = score?.failingDimension ? DIM_LABELS_SHORT[score.failingDimension] : "alignment";
 
+  // Hover tooltip state — 300ms delay, same pattern as canvas toolbar
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showDelayed() {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    tooltipTimer.current = setTimeout(() => setShowTooltip(true), 300);
+  }
+  function hide() {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    setShowTooltip(false);
+  }
+
   return (
     <div
       className="canva-card"
-      style={{
-        outline: expanded ? "2px solid var(--canva-purple-500)" : undefined,
-        outlineOffset: 2,
-        overflow: "visible",
-      }}
+      style={{ overflow: "visible", position: "relative" }}
     >
+      {/* Score breakdown tooltip — floats above the card */}
+      {score && (
+        <div
+          onMouseEnter={() => { if (tooltipTimer.current) clearTimeout(tooltipTimer.current); }}
+          onMouseLeave={hide}
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            left: 0,
+            width: 260,
+            zIndex: 50,
+            background: "white",
+            borderRadius: "var(--radius-lg)",
+            padding: 14,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(0,0,0,0.07)",
+            opacity: showTooltip ? 1 : 0,
+            pointerEvents: showTooltip ? "auto" : "none",
+            transition: "opacity 0.15s ease",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
+              Brand score
+            </p>
+            <ScoreBadge score={score} />
+          </div>
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
+            {score.explanation}
+          </p>
+          <DimensionBreakdown score={score} />
+        </div>
+      )}
+
       {/* Image */}
       <div style={{
         position: "relative",
@@ -393,19 +417,16 @@ function ImageCard({
           unoptimized
         />
 
-        {/* Badge overlay — top-left */}
+        {/* Badge overlay — top-left, hover triggers tooltip */}
         <div style={{ position: "absolute", top: 6, left: 6 }}>
           {image.noBrandContext ? (
             <span className="score-badge-neutral">No brand</span>
           ) : image.scorePending ? (
             <span className="shimmer-pill">Analyzing…</span>
           ) : score ? (
-            <button
-              onClick={onExpand}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
+            <div onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default" }}>
               <ScoreBadge score={score} compact />
-            </button>
+            </div>
           ) : null}
         </div>
       </div>
@@ -429,25 +450,11 @@ function ImageCard({
         </div>
       )}
 
-      {/* Collapsed score row — explanation snippet + expand chevron */}
-      {score && !image.scorePending && !expanded && (
-        <button
-          onClick={onExpand}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            width: "100%",
-            padding: "6px 8px",
-            background: "none",
-            border: "none",
-            borderTop: "1px solid #f5f5f5",
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
+      {/* Static explanation row — always visible once scored */}
+      {score && !image.scorePending && (
+        <div style={{ padding: "6px 8px", borderTop: "1px solid #f5f5f5" }}>
           <span style={{
-            flex: 1,
+            display: "block",
             fontSize: 10,
             color: "#757575",
             whiteSpace: "nowrap",
@@ -456,56 +463,6 @@ function ImageCard({
           }}>
             {score.explanation}
           </span>
-          <span style={{ fontSize: 9, color: "#a0a0a0", flexShrink: 0 }}>▸</span>
-        </button>
-      )}
-
-      {/* Expanded dimension breakdown — within card */}
-      {score && !image.scorePending && expanded && (
-        <div style={{ padding: "10px 8px 6px", borderTop: "1px solid #f5f5f5" }}>
-          <p style={{ fontSize: 10, color: "#757575", lineHeight: 1.4, marginBottom: 8 }}>
-            {score.explanation}
-          </p>
-
-          {DIM_KEYS.map((key) => {
-            const val = score.dimensions[key];
-            const isFailing = key === score.failingDimension;
-            const color = dimColor(val);
-            return (
-              <div key={key} style={{ marginBottom: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                  <span style={{
-                    fontSize: 9,
-                    color: isFailing ? "var(--color-score-off-brand)" : "#757575",
-                    fontWeight: isFailing ? 600 : 400,
-                  }}>
-                    {DIM_LABELS_SHORT[key]}{isFailing ? " ←" : ""}
-                  </span>
-                  <span style={{ fontSize: 9, color, fontWeight: 600 }}>{val}</span>
-                </div>
-                <div style={{ height: 3, borderRadius: 2, background: "#f0f0f0" }}>
-                  <div style={{ height: "100%", width: `${val}%`, borderRadius: 2, background: color }} />
-                </div>
-              </div>
-            );
-          })}
-
-          <button
-            onClick={onExpand}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "center",
-              fontSize: 9,
-              color: "#a0a0a0",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "4px 0 0",
-            }}
-          >
-            ▴ Hide
-          </button>
         </div>
       )}
 
