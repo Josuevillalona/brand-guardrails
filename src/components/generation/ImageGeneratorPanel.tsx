@@ -165,48 +165,8 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         </div>
       )}
 
-      {/* ── Scrollable middle — intent selector + image results ── */}
+      {/* ── Scrollable middle — image results only ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px 0" }}>
-
-        {/* Intent mode selector — brand-active only */}
-        {brandKit && (
-          <div style={{ marginBottom: 12 }}>
-            <p style={{
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "#a0a0a0",
-              margin: "0 0 6px",
-            }}>
-              Image intent
-            </p>
-            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e0e0e0" }}>
-              {IMAGE_MODES.map((mode, i) => (
-                <button
-                  key={mode.value}
-                  onClick={() => setImageMode(mode.value)}
-                  title={mode.description}
-                  style={{
-                    flex: 1,
-                    padding: "6px 4px",
-                    border: "none",
-                    borderLeft: i > 0 ? "1px solid #e0e0e0" : "none",
-                    background: imageMode === mode.value ? "#7d2ae7" : "transparent",
-                    color: imageMode === mode.value ? "#fff" : "#757575",
-                    fontSize: 11,
-                    fontWeight: 500,
-                    fontFamily: "var(--font-sans)",
-                    cursor: "pointer",
-                    transition: "background 0.15s, color 0.15s",
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Generation loading skeleton — adapts columns to panel width */}
         {generating && (
@@ -309,6 +269,34 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           <p style={{ fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", margin: 0 }}>
             {genError}
           </p>
+        )}
+
+        {/* Intent selector — brand-active only, sits between prompt and generate */}
+        {brandKit && (
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+            {IMAGE_MODES.map((mode, i) => (
+              <button
+                key={mode.value}
+                onClick={() => setImageMode(mode.value)}
+                title={mode.description}
+                style={{
+                  flex: 1,
+                  padding: "6px 4px",
+                  border: "none",
+                  borderLeft: i > 0 ? "1px solid #e0e0e0" : "none",
+                  background: imageMode === mode.value ? "#7d2ae7" : "transparent",
+                  color: imageMode === mode.value ? "#fff" : "#757575",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  fontFamily: "var(--font-sans)",
+                  cursor: "pointer",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
         )}
 
         <button
