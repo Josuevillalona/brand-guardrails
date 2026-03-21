@@ -61,8 +61,10 @@ export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: nu
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+      {/* White background fill — keeps number readable over any image */}
+      <circle cx={cx} cy={cy} r={cx - 1} fill="white" />
       {/* Track */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f0f0f0" strokeWidth={strokeWidth} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#ebebeb" strokeWidth={strokeWidth} />
       {/* Progress arc */}
       <circle
         cx={cx} cy={cy} r={r}

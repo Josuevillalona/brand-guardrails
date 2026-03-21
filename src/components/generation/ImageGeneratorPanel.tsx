@@ -422,8 +422,8 @@ function ImageCard({
           ) : image.scorePending ? (
             <span className="shimmer-pill">Analyzing…</span>
           ) : score ? (
-            <div ref={badgeRef} onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.2))" }}>
-              <ScoreCircle score={score} size={36} />
+            <div ref={badgeRef} onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}>
+              <ScoreCircle score={score} size={28} />
             </div>
           ) : null}
         </div>

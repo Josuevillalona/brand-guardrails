@@ -37,7 +37,7 @@ export function ScoreTooltipCard({ score }: Props) {
 
       {/* 1. Score circle */}
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <ScoreCircle score={score} size={56} />
+        <ScoreCircle score={score} size={44} />
       </div>
 
       {/* 2. Explanation sentence */}
