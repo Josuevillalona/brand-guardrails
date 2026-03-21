@@ -7,7 +7,7 @@ import { CanvasTextBlock } from "./CanvasTextBlock";
 import { CanvasImageBlock } from "./CanvasImageBlock";
 import { ImageGeneratorPanel } from "@/components/generation/ImageGeneratorPanel";
 import { ScoreBadge } from "@/components/scoring/ScoreBadge";
-import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
+import { ScoreTooltipCard } from "@/components/scoring/ScoreTooltipCard";
 
 const CANVAS_W = 900;
 const CANVAS_H = 600;
@@ -574,16 +574,7 @@ export function CanvasWorkspace() {
                         transition: "opacity 0.15s ease",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
-                          Brand score
-                        </p>
-                        <ScoreBadge score={imageScore} />
-                      </div>
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
-                        {imageScore.explanation}
-                      </p>
-                      <DimensionBreakdown score={imageScore} />
+                      <ScoreTooltipCard score={imageScore} />
                     </div>
                   );
                 })()}

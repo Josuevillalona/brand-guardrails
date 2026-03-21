@@ -7,7 +7,7 @@ import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
 import { ImageMode } from "@/lib/image-scorer";
 import { ScoreBadge } from "@/components/scoring/ScoreBadge";
-import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
+import { ScoreTooltipCard } from "@/components/scoring/ScoreTooltipCard";
 
 interface Props {
   onClose: () => void;
@@ -395,16 +395,7 @@ function ImageCard({
             transition: "opacity 0.15s ease",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
-              Brand score
-            </p>
-            <ScoreBadge score={score} />
-          </div>
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
-            {score.explanation}
-          </p>
-          <DimensionBreakdown score={score} />
+          <ScoreTooltipCard score={score} />
         </div>,
         document.body
       )}
