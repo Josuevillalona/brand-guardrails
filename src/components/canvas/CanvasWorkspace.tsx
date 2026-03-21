@@ -25,6 +25,9 @@ export function CanvasWorkspace() {
   } = useStore();
 
   const [showGenerator, setShowGenerator] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(260);
+  const panelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
   const [showScoreTooltip, setShowScoreTooltip] = useState(false);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,6 +109,12 @@ export function CanvasWorkspace() {
     const MIN_RESIZE = 40;
 
     function onMove(e: MouseEvent) {
+      if (panelResizeRef.current) {
+        const dx = e.clientX - panelResizeRef.current.startX;
+        const newW = Math.max(220, Math.min(540, panelResizeRef.current.startWidth + dx));
+        setPanelWidth(newW);
+        return;
+      }
       if (resize.current) {
         const { id, handle, startX, startY, startW, startH, startElX, startElY } = resize.current;
         const dx = e.clientX - startX;
@@ -142,6 +151,7 @@ export function CanvasWorkspace() {
     function onUp() {
       drag.current = null;
       resize.current = null;
+      panelResizeRef.current = null;
       document.body.style.cursor = "";
     }
 
@@ -180,7 +190,7 @@ export function CanvasWorkspace() {
         <IconItem
           label="Generate"
           active={showGenerator}
-          onClick={() => setShowGenerator(true)}
+          onClick={() => setShowGenerator((v) => !v)}
           disabled={false}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -191,7 +201,37 @@ export function CanvasWorkspace() {
 
       {/* ── Left panel — layers/brand OR generator (Magic Media style) ── */}
       {showGenerator && (
-        <ImageGeneratorPanel onClose={() => setShowGenerator(false)} />
+        <>
+          <ImageGeneratorPanel onClose={() => setShowGenerator(false)} width={panelWidth} />
+          {/* Resize handle — drag right edge to widen/narrow the panel */}
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              panelResizeRef.current = { startX: e.clientX, startWidth: panelWidth };
+              document.body.style.cursor = "col-resize";
+            }}
+            title="Drag to resize panel"
+            style={{
+              width: 6,
+              flexShrink: 0,
+              cursor: "col-resize",
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.15s",
+              zIndex: 5,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(125,42,231,0.12)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, pointerEvents: "none" }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "#c8c8c8" }} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
       <div className="canva-panel" style={{ width: 200, display: showGenerator ? "none" : undefined }}>
         <div className="canva-panel-header">

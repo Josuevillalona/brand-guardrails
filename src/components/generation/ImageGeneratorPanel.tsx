@@ -9,6 +9,7 @@ import { ScoreBadge } from "@/components/scoring/ScoreBadge";
 
 interface Props {
   onClose: () => void;
+  width?: number;
 }
 
 let imgSeq = 0;
@@ -19,7 +20,7 @@ const IMAGE_MODES: { value: ImageMode; label: string; description: string }[] = 
   { value: "broll",      label: "B-roll",      description: "Texture, detail, abstract — mood & atmosphere only" },
 ];
 
-export function ImageGeneratorPanel({ onClose }: Props) {
+export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const { brandKit, addImageElement, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
   const [imageMode, setImageMode] = useState<ImageMode>("supporting");
@@ -110,7 +111,7 @@ export function ImageGeneratorPanel({ onClose }: Props) {
   return (
     <div
       className="canva-panel"
-      style={{ width: 260, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+      style={{ width, minWidth: 220, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
     >
       {/* ── Header ── */}
       <div className="canva-panel-header" style={{ padding: "12px 16px", flexShrink: 0 }}>
@@ -207,9 +208,9 @@ export function ImageGeneratorPanel({ onClose }: Props) {
           </div>
         )}
 
-        {/* Generation loading skeleton — 2×1 while in flight */}
+        {/* Generation loading skeleton — adapts columns to panel width */}
         {generating && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 12 }}>
             {[0, 1].map((i) => (
               <div
                 key={i}
@@ -231,10 +232,10 @@ export function ImageGeneratorPanel({ onClose }: Props) {
           </div>
         )}
 
-        {/* Image grid — 2×2, newest 4 images */}
+        {/* Image grid — auto-fill columns, newest 4 images */}
         {images.length > 0 && !generating && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {images.slice(0, 4).map((img) => (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 12 }}>
+            {images.slice(0, Math.floor(width / 110) * 2).map((img) => (
               <ImageCard
                 key={img.id}
                 image={img}
