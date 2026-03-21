@@ -9,29 +9,32 @@ export async function POST(req: NextRequest) {
   try {
     const {
       userPrompt,
-      brandKit,
+      brandKit = null,
       count = 2,
       failingDimension = null,
       isAlternative = false,
     }: {
       userPrompt: string;
-      brandKit: BrandKit;
+      brandKit: BrandKit | null;
       count?: number;
       failingDimension?: string | null;
       isAlternative?: boolean;
     } = await req.json();
 
-    if (!userPrompt || !brandKit) {
+    if (!userPrompt) {
       return NextResponse.json(
-        { error: "userPrompt and brandKit are required" },
+        { error: "userPrompt is required" },
         { status: 400 }
       );
     }
 
-    // Build the 7-block structured prompt
-    const assembledPrompt = isAlternative
-      ? buildAlternativePrompt(userPrompt, brandKit, failingDimension)
-      : buildStructuredBrandPrompt(userPrompt, brandKit);
+    // Build the prompt — 7-block structured when Brand Kit present, raw prompt otherwise.
+    // Same FLUX model in both cases: the comparison isolates brand context, not model quality.
+    const assembledPrompt = brandKit
+      ? isAlternative
+        ? buildAlternativePrompt(userPrompt, brandKit, failingDimension)
+        : buildStructuredBrandPrompt(userPrompt, brandKit)
+      : userPrompt.trim();
 
     const imageCount = Math.min(Math.max(1, count), 2);
 

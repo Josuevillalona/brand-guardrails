@@ -19,6 +19,7 @@ export function CanvasWorkspace() {
     removeElement,
     addTextElement,
     brandKit,
+    setShowBrandSetup,
   } = useStore();
 
   const [showGenerator, setShowGenerator] = useState(false);
@@ -85,8 +86,8 @@ export function CanvasWorkspace() {
         <IconItem
           label="Generate"
           active={showGenerator}
-          onClick={() => brandKit && setShowGenerator(true)}
-          disabled={!brandKit}
+          onClick={() => setShowGenerator(true)}
+          disabled={false}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 2l1.8 5.4H17l-4.5 3.3 1.7 5.3L10 13l-4.2 3 1.7-5.3L3 7.4h5.2L10 2z" fill="currentColor" />
@@ -137,25 +138,46 @@ export function CanvasWorkspace() {
           )}
         </div>
 
-        {/* Brand Kit mini-summary */}
-        {brandKit && (
-          <div style={{ padding: "var(--space-3) var(--space-4)", borderTop: "1px solid var(--color-border-subtle)" }}>
-            <p className="canva-panel-label">Brand Kit</p>
-            <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-text-primary)", marginBottom: "var(--space-1)" }}>
-              {brandKit.companyName}
-            </p>
-            <div className="flex gap-1u flex-wrap">
-              {brandKit.colors.slice(0, 5).map((c, i) => (
-                <div
-                  key={i}
-                  className="canva-swatch"
-                  style={{ width: 14, height: 14, backgroundColor: c.hex, borderRadius: "var(--radius-sm)" }}
-                  title={c.descriptiveName}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Brand Kit panel — always rendered */}
+        <div style={{ padding: "var(--space-3) var(--space-4)", borderTop: "1px solid var(--color-border-subtle)" }}>
+          <p className="canva-panel-label">Brand Kit</p>
+          {brandKit ? (
+            <>
+              <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-text-primary)", marginBottom: "var(--space-1)" }}>
+                {brandKit.companyName}
+              </p>
+              <div className="flex gap-1u flex-wrap" style={{ marginBottom: "var(--space-2)" }}>
+                {brandKit.colors.slice(0, 5).map((c, i) => (
+                  <div
+                    key={i}
+                    className="canva-swatch"
+                    style={{ width: 14, height: 14, backgroundColor: c.hex, borderRadius: "var(--radius-sm)" }}
+                    title={c.descriptiveName}
+                  />
+                ))}
+              </div>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                {brandKit.renderStyle}
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginBottom: "var(--space-1)" }}>
+                No brand kit active
+              </p>
+              <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginBottom: "var(--space-3)", lineHeight: 1.4 }}>
+                Images generate without brand context
+              </p>
+              <button
+                onClick={() => setShowBrandSetup(true)}
+                className="btn-primary"
+                style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
+              >
+                Add brand kit
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Canvas area ── */}
@@ -249,7 +271,7 @@ export function CanvasWorkspace() {
       )}
 
       {/* ── Image generator slide-in panel ── */}
-      {showGenerator && brandKit && (
+      {showGenerator && (
         <ImageGeneratorPanel onClose={() => setShowGenerator(false)} />
       )}
     </div>

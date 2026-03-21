@@ -111,6 +111,7 @@ export interface GeneratedImage {
   userPrompt: string;         // original plain-language input
   score: BrandScore | null;
   scorePending: boolean;
+  noBrandContext?: boolean;   // true when generated without an active Brand Kit
 }
 
 // ─── App state ────────────────────────────────────────────────────────────────

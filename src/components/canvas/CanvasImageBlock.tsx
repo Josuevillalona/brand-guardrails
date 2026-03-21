@@ -14,6 +14,7 @@ export function CanvasImageBlock({ element, selected, onMouseDown }: Props) {
   return (
     <div
       onMouseDown={onMouseDown}
+      onClick={(e) => e.stopPropagation()}
       style={{
         position: "absolute",
         left: element.x,

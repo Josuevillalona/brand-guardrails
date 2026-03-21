@@ -5,7 +5,7 @@ import { BrandSetupPanel } from "@/components/brand-setup/BrandSetupPanel";
 import { CanvasWorkspace } from "@/components/canvas/CanvasWorkspace";
 
 export default function Home() {
-  const { phase, brandKit, setPhase } = useStore();
+  const { phase, brandKit, setShowBrandSetup, showBrandSetup } = useStore();
 
   return (
     <div className="canva-shell">
@@ -48,17 +48,40 @@ export default function Home() {
 
         {phase === "canvas" && (
           <button
-            onClick={() => setPhase("brand-setup")}
+            onClick={() => setShowBrandSetup(true)}
             className="canva-nav-btn"
           >
-            Switch brand
+            {brandKit ? "Switch brand" : "Add brand kit"}
           </button>
         )}
       </nav>
 
       {/* Editor area */}
-      <div className="canva-editor">
-        {phase === "brand-setup" ? <BrandSetupPanel /> : <CanvasWorkspace />}
+      <div className="canva-editor" style={{ position: "relative" }}>
+        {phase === "brand-setup" ? (
+          <BrandSetupPanel />
+        ) : (
+          <CanvasWorkspace />
+        )}
+
+        {/* Brand Kit setup modal — rendered over canvas for mid-session setup */}
+        {phase === "canvas" && showBrandSetup && (
+          <div
+            className="canva-modal-backdrop"
+            onClick={() => setShowBrandSetup(false)}
+          >
+            <div
+              className="canva-modal"
+              style={{ maxWidth: 600, maxHeight: "90vh", overflowY: "auto" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <BrandSetupPanel
+                isModal
+                onDismiss={() => setShowBrandSetup(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

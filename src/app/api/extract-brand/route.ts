@@ -49,10 +49,13 @@ export async function POST(req: NextRequest) {
 
     const doc = scrapeResult.data;
     if (!scrapeResult.success || !doc) {
-      return NextResponse.json(
-        { error: "Failed to scrape URL. Check that the site is publicly accessible." },
-        { status: 422 }
-      );
+      // Detect common blocked domains and give specific guidance
+      const blockedDomains = ["facebook.com", "instagram.com", "linkedin.com", "twitter.com", "x.com", "tiktok.com"];
+      const isBlockedDomain = blockedDomains.some((d) => url.includes(d));
+      const errorMsg = isBlockedDomain
+        ? `${new URL(url).hostname} blocks automated access and can't be scraped. Try your brand's main marketing or company website instead (e.g. yourcompany.com).`
+        : "We couldn't access this URL — the site may require a login or block automated scrapers. Try your company's public marketing site instead.";
+      return NextResponse.json({ error: errorMsg }, { status: 422 });
     }
 
     const raw = doc.markdown ?? doc.content ?? "";
@@ -96,7 +99,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ brandKit, screenshotAvailable: !!screenshotBase64 });
   } catch (err) {
     console.error("[extract-brand]", err);
-    const message = err instanceof Error ? err.message : "Internal error";
+    const raw = err instanceof Error ? err.message : "Internal error";
+    // Surface Firecrawl auth/quota failures with actionable messaging
+    const message = raw.includes("403")
+      ? "Could not access this URL. The site may be blocking scrapers, or your Firecrawl credits may be exhausted. Try a different URL or check your Firecrawl dashboard."
+      : raw.includes("401") || raw.includes("Unauthorized")
+      ? "Firecrawl API key is invalid or expired. Check FIRECRAWL_API_KEY in your environment."
+      : raw;
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

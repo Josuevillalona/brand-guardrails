@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
 import { ImageMode } from "@/lib/image-scorer";
-import { ScoreBadge } from "@/components/scoring/ScoreBadge";
+import { ScoreBadge, NoBrandBadge } from "@/components/scoring/ScoreBadge";
 import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
 
 interface Props {
@@ -34,12 +34,13 @@ export function ImageGeneratorPanel({ onClose }: Props) {
     isAlternative = false,
     failingDimension: string | null = null
   ) {
-    if (!brandKit || !userPrompt.trim()) return;
+    if (!userPrompt.trim()) return;
     setGenerating(true);
     setGenError(null);
 
     try {
-      // Step 1: Generate 2 images in parallel
+      // Generate 2 images — same FLUX model regardless of Brand Kit state.
+      // Brand context is the only variable; model quality must be constant for a valid comparison.
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,21 +49,25 @@ export function ImageGeneratorPanel({ onClose }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
 
+      const hasBrand = !!brandKit;
       const newImages: GeneratedImage[] = (data.imageUrls as string[]).map((url) => ({
         id: `img-${Date.now()}-${imgSeq++}`,
         imageUrl: url,
         prompt: data.assembledPrompt,
         userPrompt: data.userPrompt,
         score: null,
-        scorePending: true,
+        scorePending: hasBrand,   // no scoring without Brand Kit
+        noBrandContext: !hasBrand,
       }));
 
       setImages((prev) => [...newImages, ...prev]);
 
-      // Step 2: Score each image in parallel — don't block image display
-      newImages.forEach((img) => {
-        scoreImage(img.id, img.imageUrl, userPrompt, imageMode);
-      });
+      // Score in parallel — only when Brand Kit is active
+      if (hasBrand) {
+        newImages.forEach((img) => {
+          scoreImage(img.id, img.imageUrl, userPrompt, imageMode);
+        });
+      }
     } catch (err) {
       setGenError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -126,9 +131,13 @@ export function ImageGeneratorPanel({ onClose }: Props) {
             <h2 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
               Generate image
             </h2>
-            {brandKit && (
+            {brandKit ? (
               <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", marginTop: 2 }}>
                 Brand Kit: <strong>{brandKit.companyName}</strong> · Brand context injected automatically
+              </p>
+            ) : (
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                No brand kit active · Images generate without brand constraints
               </p>
             )}
           </div>
@@ -137,44 +146,46 @@ export function ImageGeneratorPanel({ onClose }: Props) {
 
         <div className="canva-modal-body" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
 
-          {/* Image mode selector */}
-          <div>
-            <p className="canva-panel-label" style={{ marginBottom: "var(--space-2)" }}>Image type</p>
-            <div className="flex gap-2u">
-              {IMAGE_MODES.map((mode) => (
-                <button
-                  key={mode.value}
-                  onClick={() => setImageMode(mode.value)}
-                  title={mode.description}
-                  style={{
-                    flex: 1,
-                    padding: "var(--space-2) var(--space-3)",
-                    borderRadius: "var(--radius-md)",
-                    border: imageMode === mode.value
-                      ? "2px solid var(--canva-purple-500)"
-                      : "1px solid var(--color-border-default)",
-                    background: imageMode === mode.value
-                      ? "var(--canva-purple-50)"
-                      : "var(--color-bg-surface)",
-                    color: imageMode === mode.value
-                      ? "var(--canva-purple-600)"
-                      : "var(--color-text-secondary)",
-                    fontFamily: "var(--font-sans)",
-                    fontSize: "var(--text-sm)",
-                    fontWeight: imageMode === mode.value ? "var(--weight-bold)" : "var(--weight-medium)",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    transition: "all var(--transition-fast)",
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
+          {/* Image mode selector — only meaningful with an active Brand Kit */}
+          {brandKit && (
+            <div>
+              <p className="canva-panel-label" style={{ marginBottom: "var(--space-2)" }}>Image type</p>
+              <div className="flex gap-2u">
+                {IMAGE_MODES.map((mode) => (
+                  <button
+                    key={mode.value}
+                    onClick={() => setImageMode(mode.value)}
+                    title={mode.description}
+                    style={{
+                      flex: 1,
+                      padding: "var(--space-2) var(--space-3)",
+                      borderRadius: "var(--radius-md)",
+                      border: imageMode === mode.value
+                        ? "2px solid var(--canva-purple-500)"
+                        : "1px solid var(--color-border-default)",
+                      background: imageMode === mode.value
+                        ? "var(--canva-purple-50)"
+                        : "var(--color-bg-surface)",
+                      color: imageMode === mode.value
+                        ? "var(--canva-purple-600)"
+                        : "var(--color-text-secondary)",
+                      fontFamily: "var(--font-sans)",
+                      fontSize: "var(--text-sm)",
+                      fontWeight: imageMode === mode.value ? "var(--weight-bold)" : "var(--weight-medium)",
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all var(--transition-fast)",
+                    }}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ marginTop: "var(--space-1)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                {IMAGE_MODES.find((m) => m.value === imageMode)?.description}
+              </p>
             </div>
-            <p style={{ marginTop: "var(--space-1)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-              {IMAGE_MODES.find((m) => m.value === imageMode)?.description}
-            </p>
-          </div>
+          )}
 
           {/* Prompt input */}
           <div>
@@ -184,7 +195,7 @@ export function ImageGeneratorPanel({ onClose }: Props) {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") generate(prompt); }}
-                placeholder="Describe the image you need…"
+                placeholder={brandKit ? "Describe the image you need…" : "Describe the image you want…"}
                 className="canva-input flex-1"
                 disabled={generating}
               />
@@ -246,8 +257,8 @@ export function ImageGeneratorPanel({ onClose }: Props) {
             </div>
           )}
 
-          {/* Expanded score detail */}
-          {expanded?.score && (
+          {/* Expanded score detail — only for brand-scored images */}
+          {expanded?.score && !expanded.noBrandContext && (
             <div
               style={{
                 background: "var(--canva-gray-50)",
@@ -314,7 +325,9 @@ function ImageCard({
 
         {/* Score badge overlay */}
         <div style={{ position: "absolute", top: 8, left: 8 }}>
-          {image.scorePending ? (
+          {image.noBrandContext ? (
+            <NoBrandBadge />
+          ) : image.scorePending ? (
             <span
               className="score-pending"
               style={{

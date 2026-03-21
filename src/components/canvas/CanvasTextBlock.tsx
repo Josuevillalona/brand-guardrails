@@ -29,6 +29,7 @@ export function CanvasTextBlock({ element, selected, onMouseDown }: Props) {
   return (
     <div
       onMouseDown={editing ? undefined : onMouseDown}
+      onClick={(e) => e.stopPropagation()}
       onDoubleClick={startEdit}
       style={{
         position: "absolute",

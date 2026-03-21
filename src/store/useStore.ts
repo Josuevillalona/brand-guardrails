@@ -18,11 +18,13 @@ interface AppStore {
   brandKit: BrandKit | null;
   brandExtracting: boolean;
   brandError: string | null;
+  showBrandSetup: boolean;
   setBrandKit: (kit: BrandKit) => void;
   setBrandExtracting: (v: boolean) => void;
   setBrandError: (err: string | null) => void;
   updateBrandKit: (partial: Partial<BrandKit>) => void;
   clearBrandKit: () => void;
+  setShowBrandSetup: (v: boolean) => void;
 
   // ── Generated images (generation panel) ───────────────────────────────────
   generatedImages: GeneratedImage[];
@@ -57,12 +59,14 @@ export const useStore = create<AppStore>((set, get) => ({
   brandKit: null,
   brandExtracting: false,
   brandError: null,
-  setBrandKit: (kit) => set({ brandKit: kit }),
+  showBrandSetup: false,
+  setBrandKit: (kit) => set({ brandKit: kit, showBrandSetup: false }),
   setBrandExtracting: (v) => set({ brandExtracting: v }),
   setBrandError: (err) => set({ brandError: err }),
   updateBrandKit: (partial) =>
     set((s) => ({ brandKit: s.brandKit ? { ...s.brandKit, ...partial } : null })),
   clearBrandKit: () => set({ brandKit: null }),
+  setShowBrandSetup: (v) => set({ showBrandSetup: v }),
 
   // ── Generated images ───────────────────────────────────────────────────────
   generatedImages: [],
