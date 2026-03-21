@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Canva design system — tokens must come before components */
+@import '../styles/canva-tokens.css';
+@import '../styles/canva-components.css';
+
+/* App-specific overrides and utilities */
+
+/* Score dimension bar fill colors */
+.score-dim-bar-fill-good    { background: var(--color-score-on-brand); }
+.score-dim-bar-fill-mid     { background: var(--color-score-needs-review); }
+.score-dim-bar-fill-bad     { background: var(--color-score-off-brand); }
+
+/* Canvas element selection ring */
+.canvas-el-selected {
+  outline: 2px solid var(--canva-purple-500);
+  outline-offset: 2px;
+}
+
+/* AI sparkle icon for generate button */
+.ai-sparkle::before {
+  content: '✦';
+  font-size: 11px;
+}
+
+/* Pulse animation for score-pending state */
+@keyframes score-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+.score-pending { animation: score-pulse 1.4s ease-in-out infinite; }
