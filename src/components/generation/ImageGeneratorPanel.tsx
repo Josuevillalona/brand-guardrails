@@ -508,9 +508,9 @@ function ImageCard({
               onClick={onGetAlternative}
               className="btn-ai"
               style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
-              title={`Re-generate targeting: ${score.failingDimension ?? "overall"}`}
+              title={`Improve ${failLabel}`}
             >
-              ✦ Improve {failLabel}
+              ✦ Get on-brand version
             </button>
             <button
               onClick={onPlace}

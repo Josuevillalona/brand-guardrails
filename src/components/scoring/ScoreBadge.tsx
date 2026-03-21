@@ -61,11 +61,11 @@ export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: nu
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      {/* White background fill — keeps number readable over any image */}
-      <circle cx={cx} cy={cy} r={cx - 1} fill="white" />
-      {/* Track */}
+      {/* 1. Outer white background — badge foundation over images */}
+      <circle cx={cx} cy={cy} r={cx - 0.5} fill="white" />
+      {/* 2. Track */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#ebebeb" strokeWidth={strokeWidth} />
-      {/* Progress arc */}
+      {/* 3. Progress arc */}
       <circle
         cx={cx} cy={cy} r={r}
         fill="none"
@@ -76,7 +76,9 @@ export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: nu
         strokeLinecap="round"
         transform={`rotate(-90 ${cx} ${cy})`}
       />
-      {/* Score number */}
+      {/* 4. White inner fill drawn after arc — creates explicit white gap between ring and number */}
+      <circle cx={cx} cy={cy} r={r - strokeWidth / 2 - 1} fill="white" />
+      {/* 5. Score number */}
       <text
         x={cx} y={cy}
         textAnchor="middle"
