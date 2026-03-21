@@ -105,7 +105,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       score: img.score,
       scorePending: img.scorePending,
     });
-    onClose();
+    // Panel stays open — user can place multiple images or keep browsing
   }
 
   return (

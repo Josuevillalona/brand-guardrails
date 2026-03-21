@@ -200,10 +200,10 @@ export function CanvasWorkspace() {
       </div>
 
       {/* ── Left panel — layers/brand OR generator (Magic Media style) ── */}
-      {showGenerator && (
-        <>
-          <ImageGeneratorPanel onClose={() => setShowGenerator(false)} width={panelWidth} />
-          {/* Resize handle — drag right edge to widen/narrow the panel */}
+      {/* Always mounted — display:none hides without unmounting, preserving session state */}
+      <div style={{ display: showGenerator ? "contents" : "none" }}>
+        <ImageGeneratorPanel onClose={() => setShowGenerator(false)} width={panelWidth} />
+        {/* Resize handle — drag right edge to widen/narrow the panel */}
           <div
             onMouseDown={(e) => {
               e.preventDefault();
@@ -231,8 +231,7 @@ export function CanvasWorkspace() {
               ))}
             </div>
           </div>
-        </>
-      )}
+      </div>
       <div className="canva-panel" style={{ width: 200, display: showGenerator ? "none" : undefined }}>
         <div className="canva-panel-header">
           <p className="canva-panel-label">Layers</p>
