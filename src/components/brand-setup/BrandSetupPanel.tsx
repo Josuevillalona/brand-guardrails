@@ -261,7 +261,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
               gap: "var(--space-2)",
               marginTop: "var(--space-4)",
             }}>
-              <button onClick={() => setPhase("canvas")} className="btn-primary">
+              <button onClick={() => { setPhase("canvas"); onDismiss?.(); }} className="btn-primary">
                 Use this brand kit →
               </button>
               <button

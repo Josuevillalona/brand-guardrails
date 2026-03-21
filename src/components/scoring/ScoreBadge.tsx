@@ -37,24 +37,7 @@ export function ScoreBadge({ score, compact = false }: Props) {
 }
 
 // Neutral badge for images generated without an active Brand Kit.
-// Visually distinct from scoring badges — no number, no pass/fail signal.
+// Uses score-badge-neutral CSS class — informational, not a failure state.
 export function NoBrandBadge() {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "3px 8px",
-        borderRadius: "var(--radius-sm)",
-        background: "rgba(0,0,0,0.45)",
-        fontSize: "var(--text-xs)",
-        color: "rgba(255,255,255,0.75)",
-        backdropFilter: "blur(4px)",
-        fontWeight: "var(--weight-medium)",
-        letterSpacing: "0.01em",
-      }}
-    >
-      No brand context
-    </span>
-  );
+  return <span className="score-badge-neutral">No brand context</span>;
 }

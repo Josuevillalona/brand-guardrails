@@ -82,6 +82,29 @@ export function buildStructuredBrandPrompt(
 }
 
 /**
+ * Returns the 7 prompt blocks as labeled rows for the prompt preview panel.
+ * Mirrors buildStructuredBrandPrompt logic — structured for display, not concatenation.
+ */
+export function getBrandPromptBlocks(
+  userPrompt: string,
+  brandKit: BrandKit
+): Array<{ label: string; value: string }> {
+  const colorNames = brandKit.colors.slice(0, 4).map((c) => c.descriptiveName).join(" · ");
+  const prohibitedList = Array.from(new Set([...brandKit.prohibitedElements, ...UNIVERSAL_NEGATIVE]));
+
+  return [
+    { label: "Subject",     value: userPrompt || "(your prompt)" },
+    { label: "Style",       value: `${brandKit.renderStyle}, ${brandKit.depthOfField}, ${brandKit.cameraAngle} angle` },
+    { label: "Colors",      value: `${colorNames} — ambient tones, natural subject colors` },
+    { label: "Lighting",    value: `${brandKit.lightingStyle}, ${brandKit.lightingTemperature} temperature` },
+    { label: "Composition", value: `${brandKit.shotType} shot, ${brandKit.negativeSpace} space, ${brandKit.environmentalContext}` },
+    { label: "Mood",        value: brandKit.moodAdjectives.join(" · ") },
+    { label: "Grade",       value: brandKit.colorGrade },
+    { label: "Avoid",       value: prohibitedList.slice(0, 6).join(" · ") },
+  ];
+}
+
+/**
  * Builds a targeted alternative prompt that reinforces the failing dimension.
  * Called when the user clicks "Get on-brand version" on a low-scoring image.
  * Reinforcements now reference the full 18-field kit.

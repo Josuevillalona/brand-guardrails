@@ -60,7 +60,7 @@ export const useStore = create<AppStore>((set, get) => ({
   brandExtracting: false,
   brandError: null,
   showBrandSetup: false,
-  setBrandKit: (kit) => set({ brandKit: kit, showBrandSetup: false }),
+  setBrandKit: (kit) => set({ brandKit: kit }),
   setBrandExtracting: (v) => set({ brandExtracting: v }),
   setBrandError: (err) => set({ brandError: err }),
   updateBrandKit: (partial) =>

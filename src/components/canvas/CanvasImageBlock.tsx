@@ -1,8 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { ImageElement } from "@/types";
-import { ScoreBadge } from "@/components/scoring/ScoreBadge";
 
 interface Props {
   element: ImageElement;
@@ -11,21 +11,30 @@ interface Props {
 }
 
 export function CanvasImageBlock({ element, selected, onMouseDown }: Props) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <div
       onMouseDown={onMouseDown}
       onClick={(e) => e.stopPropagation()}
+      onDragStart={(e) => e.preventDefault()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         position: "absolute",
         left: element.x,
         top: element.y,
         width: element.width,
         height: element.height,
-        outline: selected ? "2px solid var(--canva-purple-500)" : "2px solid transparent",
+        outline: selected
+          ? "2px solid var(--canva-purple-500)"
+          : hovered
+          ? "2px solid rgba(125, 42, 231, 0.35)"
+          : "2px solid transparent",
         outlineOffset: 2,
         borderRadius: "var(--radius-md)",
         overflow: "hidden",
-        cursor: "move",
+        cursor: "grab",
         userSelect: "none",
       }}
     >
@@ -33,33 +42,11 @@ export function CanvasImageBlock({ element, selected, onMouseDown }: Props) {
         src={element.imageUrl}
         alt={element.prompt}
         fill
-        style={{ objectFit: "cover" }}
-        unoptimized // DALL-E URLs are signed and expire; skip Next.js optimization
+        draggable={false}
+        style={{ objectFit: "cover", pointerEvents: "none" }}
+        unoptimized
       />
 
-      {/* Score badge overlay — bottom-left corner */}
-      <div style={{ position: "absolute", bottom: 6, left: 6 }}>
-        {element.scorePending ? (
-          <div
-            className="score-pending"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "var(--space-1)",
-              padding: "3px var(--space-2)",
-              borderRadius: "var(--radius-sm)",
-              background: "rgba(0,0,0,0.5)",
-              fontSize: "var(--text-xs)",
-              color: "white",
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            Scoring…
-          </div>
-        ) : element.score ? (
-          <ScoreBadge score={element.score} compact />
-        ) : null}
-      </div>
     </div>
   );
 }

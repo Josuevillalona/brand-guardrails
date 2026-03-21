@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useStore } from "@/store/useStore";
 import { TextElement, ImageElement } from "@/types";
 import { CanvasTextBlock } from "./CanvasTextBlock";
 import { CanvasImageBlock } from "./CanvasImageBlock";
 import { ImageGeneratorPanel } from "@/components/generation/ImageGeneratorPanel";
+import { ScoreBadge } from "@/components/scoring/ScoreBadge";
+import { DimensionBreakdown } from "@/components/scoring/DimensionBreakdown";
 
 const CANVAS_W = 900;
 const CANVAS_H = 600;
@@ -23,6 +25,14 @@ export function CanvasWorkspace() {
   } = useStore();
 
   const [showGenerator, setShowGenerator] = useState(false);
+  const [showScorePopover, setShowScorePopover] = useState(false);
+
+  // Close score popover whenever selection changes
+  useEffect(() => {
+    setShowScorePopover(false);
+  }, [selectedElementId]);
+
+  const DRAG_THRESHOLD = 4; // px before a mousedown becomes a drag
 
   // Drag tracking
   const drag = useRef<{
@@ -31,6 +41,21 @@ export function CanvasWorkspace() {
     startY: number;
     elX: number;
     elY: number;
+    elW: number;
+    elH: number;
+    active: boolean; // true once threshold exceeded
+  } | null>(null);
+
+  // Resize tracking
+  const resize = useRef<{
+    id: string;
+    handle: "nw" | "ne" | "se" | "sw";
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    startElX: number;
+    startElY: number;
   } | null>(null);
 
   const handleMouseDown = useCallback(
@@ -39,25 +64,82 @@ export function CanvasWorkspace() {
       selectElement(id);
       const el = canvasElements.find((c) => c.id === id);
       if (!el) return;
-      drag.current = { id, startX: e.clientX, startY: e.clientY, elX: el.x, elY: el.y };
+      drag.current = { id, startX: e.clientX, startY: e.clientY, elX: el.x, elY: el.y, elW: el.width, elH: el.height, active: false };
     },
     [canvasElements, selectElement]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const startResize = useCallback(
+    (handle: "nw" | "ne" | "se" | "sw", e: React.MouseEvent) => {
+      e.stopPropagation();
+      const el = canvasElements.find((c) => c.id === selectedElementId);
+      if (!el) return;
+      resize.current = {
+        id: el.id,
+        handle,
+        startX: e.clientX,
+        startY: e.clientY,
+        startW: el.width,
+        startH: el.height,
+        startElX: el.x,
+        startElY: el.y,
+      };
+    },
+    [canvasElements, selectedElementId]
+  );
+
+  // Window-level move/up listeners — fire regardless of where the mouse is,
+  // so fast moves outside the canvas or releasing outside never get stuck.
+  useEffect(() => {
+    const MIN_RESIZE = 40;
+
+    function onMove(e: MouseEvent) {
+      if (resize.current) {
+        const { id, handle, startX, startY, startW, startH, startElX, startElY } = resize.current;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (handle === "se") {
+          updateElement(id, { width: Math.max(MIN_RESIZE, startW + dx), height: Math.max(MIN_RESIZE, startH + dy) });
+        } else if (handle === "sw") {
+          const newW = Math.max(MIN_RESIZE, startW - dx);
+          updateElement(id, { x: startElX + startW - newW, width: newW, height: Math.max(MIN_RESIZE, startH + dy) });
+        } else if (handle === "ne") {
+          const newH = Math.max(MIN_RESIZE, startH - dy);
+          updateElement(id, { y: startElY + startH - newH, width: Math.max(MIN_RESIZE, startW + dx), height: newH });
+        } else if (handle === "nw") {
+          const newW = Math.max(MIN_RESIZE, startW - dx);
+          const newH = Math.max(MIN_RESIZE, startH - dy);
+          updateElement(id, { x: startElX + startW - newW, y: startElY + startH - newH, width: newW, height: newH });
+        }
+        return;
+      }
       if (!drag.current) return;
       const dx = e.clientX - drag.current.startX;
       const dy = e.clientY - drag.current.startY;
+      if (!drag.current.active) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        drag.current.active = true;
+        document.body.style.cursor = "grabbing";
+      }
       updateElement(drag.current.id, {
-        x: Math.max(0, drag.current.elX + dx),
-        y: Math.max(0, drag.current.elY + dy),
+        x: Math.min(CANVAS_W - drag.current.elW, Math.max(0, drag.current.elX + dx)),
+        y: Math.min(CANVAS_H - drag.current.elH, Math.max(0, drag.current.elY + dy)),
       });
-    },
-    [updateElement]
-  );
+    }
 
-  const stopDrag = useCallback(() => { drag.current = null; }, []);
+    function onUp() {
+      drag.current = null;
+      resize.current = null;
+      document.body.style.cursor = "";
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [updateElement]);
 
   function addText() {
     addTextElement({
@@ -185,9 +267,6 @@ export function CanvasWorkspace() {
         <div
           className="canva-canvas-surface"
           style={{ width: CANVAS_W, height: CANVAS_H, position: "relative", userSelect: "none" }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={stopDrag}
-          onMouseLeave={stopDrag}
           onClick={() => selectElement(null)}
         >
           {/* Empty state */}
@@ -240,41 +319,241 @@ export function CanvasWorkspace() {
                 />
               )
             )}
+
+          {/* Resize handles — rendered over the selected element */}
+          {selected && ([
+            { handle: "nw" as const, cursor: "nw-resize", left: selected.x - 5,               top: selected.y - 5 },
+            { handle: "ne" as const, cursor: "ne-resize", left: selected.x + selected.width - 5, top: selected.y - 5 },
+            { handle: "se" as const, cursor: "se-resize", left: selected.x + selected.width - 5, top: selected.y + selected.height - 5 },
+            { handle: "sw" as const, cursor: "sw-resize", left: selected.x - 5,               top: selected.y + selected.height - 5 },
+          ].map(({ handle, cursor, left, top }) => (
+            <div
+              key={handle}
+              onMouseDown={(e) => startResize(handle, e)}
+              style={{
+                position: "absolute",
+                left,
+                top,
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: "var(--canva-purple-500)",
+                border: "2px solid white",
+                cursor,
+                zIndex: 20,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+              }}
+            />
+          )))}
+
+          {/* Floating contextual toolbar — appears above (or below) selected element */}
+          {selected && (() => {
+            const TOOLBAR_H = 36;
+            const GAP = 8;
+            const aboveY = selected.y - TOOLBAR_H - GAP;
+            const toolbarAbove = aboveY >= 4;
+            const toolbarTop = toolbarAbove ? aboveY : selected.y + selected.height + GAP;
+            const toolbarLeft = Math.min(CANVAS_W - 300, Math.max(0, selected.x));
+
+            const imageEl = selected.type === "image" ? (selected as ImageElement) : null;
+            const imageScore = imageEl?.score && !imageEl.scorePending ? imageEl.score : null;
+
+            // Popover positioning: opposite side from toolbar
+            const POPOVER_W = 300;
+            const popoverTop = toolbarAbove
+              ? selected.y + selected.height + GAP
+              : aboveY - 220; // approximate popover height
+            const popoverLeft = Math.min(CANVAS_W - POPOVER_W - 4, Math.max(0, toolbarLeft));
+
+            return (
+              <>
+                {/* Toolbar */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute",
+                    left: toolbarLeft,
+                    top: toolbarTop,
+                    zIndex: 30,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    background: "white",
+                    borderRadius: "var(--radius-lg)",
+                    padding: "0 6px",
+                    height: TOOLBAR_H,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)",
+                    border: "1px solid rgba(0,0,0,0.07)",
+                    userSelect: "none",
+                  }}
+                >
+                  {/* Text-specific controls */}
+                  {selected.type === "text" && (
+                    <>
+                      {/* Font size */}
+                      <input
+                        type="number"
+                        value={(selected as TextElement).fontSize}
+                        min={8}
+                        max={96}
+                        onChange={(e) => updateElement(selected.id, { fontSize: Math.min(96, Math.max(8, Number(e.target.value))) })}
+                        style={{
+                          width: 48,
+                          height: 24,
+                          border: "1px solid var(--color-border-default)",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: "var(--text-xs)",
+                          fontFamily: "var(--font-sans)",
+                          textAlign: "center",
+                          color: "var(--color-text-primary)",
+                          padding: "0 4px",
+                        }}
+                      />
+                      {/* Color picker */}
+                      <div style={{ position: "relative", width: 24, height: 24, marginLeft: 2 }}>
+                        <input
+                          type="color"
+                          value={(selected as TextElement).color}
+                          onChange={(e) => updateElement(selected.id, { color: e.target.value })}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            opacity: 0,
+                            cursor: "pointer",
+                            width: "100%",
+                            height: "100%",
+                          }}
+                        />
+                        <div style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          background: (selected as TextElement).color,
+                          border: "2px solid rgba(0,0,0,0.15)",
+                          pointerEvents: "none",
+                        }} />
+                      </div>
+                      <ToolbarDivider />
+                    </>
+                  )}
+
+                  {/* Image brand score row — only when score is resolved */}
+                  {imageScore && (
+                    <>
+                      <ScoreBadge score={imageScore} compact />
+                      <button
+                        onClick={() => setShowScorePopover((v) => !v)}
+                        style={{
+                          fontSize: "var(--text-xs)",
+                          color: showScorePopover ? "var(--canva-purple-500)" : "var(--color-text-muted)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "0 6px",
+                          fontFamily: "var(--font-sans)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {showScorePopover ? "Hide breakdown" : "See breakdown →"}
+                      </button>
+                      <ToolbarDivider />
+                    </>
+                  )}
+
+                  {/* Size readout */}
+                  <span style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    padding: "0 6px",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {Math.round(selected.width)}×{Math.round(selected.height)}
+                  </span>
+
+                  <ToolbarDivider />
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => removeElement(selected.id)}
+                    title="Delete"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      border: "none",
+                      borderRadius: "var(--radius-md)",
+                      background: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--color-text-muted)",
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "#fee2e2";
+                      (e.currentTarget as HTMLButtonElement).style.color = "var(--color-score-off-brand)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "none";
+                      (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)";
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M1.75 3.5h10.5M5.25 3.5V2.333a.583.583 0 0 1 .583-.583h2.334a.583.583 0 0 1 .583.583V3.5m1.75 0-.583 7.583a.583.583 0 0 1-.583.584H4.667a.583.583 0 0 1-.584-.584L3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Score breakdown popover */}
+                {showScorePopover && imageScore && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    style={{
+                      position: "absolute",
+                      left: popoverLeft,
+                      top: popoverTop,
+                      width: POPOVER_W,
+                      zIndex: 29,
+                      background: "white",
+                      borderRadius: "var(--radius-lg)",
+                      padding: 16,
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.08)",
+                      border: "1px solid rgba(0,0,0,0.07)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <p style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)", margin: 0 }}>
+                        Brand score breakdown
+                      </p>
+                      <ScoreBadge score={imageScore} />
+                    </div>
+                    <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: 12, lineHeight: 1.45 }}>
+                      {imageScore.explanation}
+                    </p>
+                    <DimensionBreakdown score={imageScore} />
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
-      {/* ── Right properties panel — shown when element is selected ── */}
-      {selected && (
-        <div className="canva-panel" style={{ borderLeft: "1px solid var(--color-border-default)", borderRight: "none" }}>
-          <div className="canva-panel-header">
-            <p className="canva-panel-label">Properties</p>
-          </div>
-          <div className="canva-panel-body">
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginBottom: "var(--space-3)" }}>
-              {selected.type === "text" ? "Text block" : "Image block"}
-            </p>
-            <div style={{ marginBottom: "var(--space-3)" }}>
-              <p className="canva-panel-label">Position</p>
-              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-primary)", fontFamily: "var(--font-mono)" }}>
-                x: {Math.round(selected.x)} · y: {Math.round(selected.y)}
-              </p>
-            </div>
-            <button
-              onClick={() => removeElement(selected.id)}
-              className="btn-ghost"
-              style={{ width: "100%", justifyContent: "center", color: "var(--color-score-off-brand)" }}
-            >
-              Delete element
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Image generator slide-in panel ── */}
       {showGenerator && (
         <ImageGeneratorPanel onClose={() => setShowGenerator(false)} />
       )}
     </div>
+  );
+}
+
+function ToolbarDivider() {
+  return (
+    <div style={{ width: 1, height: 18, background: "var(--color-border-default)", margin: "0 4px", flexShrink: 0 }} />
   );
 }
 

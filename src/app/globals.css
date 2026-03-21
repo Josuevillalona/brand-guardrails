@@ -31,3 +31,46 @@
   50%       { opacity: 1; }
 }
 .score-pending { animation: score-pulse 1.4s ease-in-out infinite; }
+
+/* Shimmer animation for scoring skeleton */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Neutral badge — no-brand-context images. Reads as informational, not failure. */
+.score-badge-neutral {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: #757575;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Shimmer pill — score pending badge overlay */
+.shimmer-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  font-size: 11px;
+  color: #a0a0a0;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Shimmer bar — dimension skeleton placeholders */
+.shimmer-bar {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
