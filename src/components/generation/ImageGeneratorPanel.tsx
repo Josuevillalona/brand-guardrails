@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
 import { ImageMode } from "@/lib/image-scorer";
-import { ScoreBadge } from "@/components/scoring/ScoreBadge";
+import { ScoreCircle } from "@/components/scoring/ScoreBadge";
 import { ScoreTooltipCard } from "@/components/scoring/ScoreTooltipCard";
 
 interface Props {
@@ -422,8 +422,8 @@ function ImageCard({
           ) : image.scorePending ? (
             <span className="shimmer-pill">Analyzing…</span>
           ) : score ? (
-            <div ref={badgeRef} onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default" }}>
-              <ScoreBadge score={score} compact />
+            <div ref={badgeRef} onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.2))" }}>
+              <ScoreCircle score={score} size={36} />
             </div>
           ) : null}
         </div>

@@ -1,5 +1,5 @@
 import { BrandScore, ScoreDimensions } from "@/types";
-import { ScoreBadge } from "./ScoreBadge";
+import { ScoreCircle } from "./ScoreBadge";
 
 interface Props {
   score: BrandScore;
@@ -35,8 +35,10 @@ export function ScoreTooltipCard({ score }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
-      {/* 1. Score badge */}
-      <ScoreBadge score={score} />
+      {/* 1. Score circle */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <ScoreCircle score={score} size={56} />
+      </div>
 
       {/* 2. Explanation sentence */}
       <p style={{

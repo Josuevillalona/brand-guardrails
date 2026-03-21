@@ -41,3 +41,51 @@ export function ScoreBadge({ score, compact = false }: Props) {
 export function NoBrandBadge() {
   return <span className="score-badge-neutral">No brand context</span>;
 }
+
+// Circular progress ring — score number centered inside an arc that fills to score/100.
+// Color tracks the same green/amber/red thresholds as the bar components.
+export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: number }) {
+  const strokeWidth = Math.max(3, size * 0.08);
+  const r = (size - strokeWidth) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - score.score / 100);
+
+  const color =
+    score.label === "on-brand"
+      ? "var(--color-score-on-brand)"
+      : score.label === "needs-review"
+      ? "var(--color-score-needs-review)"
+      : "var(--color-score-off-brand)";
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+      {/* Track */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f0f0f0" strokeWidth={strokeWidth} />
+      {/* Progress arc */}
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cy})`}
+      />
+      {/* Score number */}
+      <text
+        x={cx} y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={Math.round(size * 0.28)}
+        fontWeight="700"
+        fill={color}
+        fontFamily="var(--font-sans)"
+      >
+        {score.score}
+      </text>
+    </svg>
+  );
+}
