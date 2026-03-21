@@ -10,12 +10,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
+    "@mendable/firecrawl-js": "^0.0.36",
     "next": "14.2.5",
     "openai": "^4.52.0",
     "react": "^18",
     "react-dom": "^18",
-    "zustand": "^4.5.4",
-    "@mendable/firecrawl-js": "^0.0.36"
+    "replicate": "^1.4.0",
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^20",

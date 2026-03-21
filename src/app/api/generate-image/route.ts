@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import Replicate from "replicate";
 import { buildStructuredBrandPrompt, buildAlternativePrompt } from "@/lib/prompt-builder";
 import { BrandKit } from "@/types";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,29 +33,27 @@ export async function POST(req: NextRequest) {
       ? buildAlternativePrompt(userPrompt, brandKit, failingDimension)
       : buildStructuredBrandPrompt(userPrompt, brandKit);
 
-    // Generate `count` images in parallel (default 2)
     const imageCount = Math.min(Math.max(1, count), 2);
-    const requests = Array.from({ length: imageCount }, () =>
-      openai.images.generate({
-        model: "dall-e-3",
+
+    // FLUX.1-dev via Replicate — supports num_outputs natively, single call
+    const output = await replicate.run("black-forest-labs/flux-dev", {
+      input: {
         prompt: assembledPrompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "standard",
-        response_format: "url",
-      })
-    );
-
-    const results = await Promise.all(requests);
-    const imageUrls = results
-      .map((r) => r.data?.[0]?.url)
-      .filter((url): url is string => Boolean(url));
-
-    return NextResponse.json({
-      imageUrls,
-      assembledPrompt,
-      userPrompt,
+        num_outputs: imageCount,
+        aspect_ratio: "1:1",
+        output_format: "webp",
+        output_quality: 90,
+        go_fast: false,      // full quality weights
+        guidance: 3.5,       // default — balanced prompt adherence
+      },
     });
+
+    // SDK v1.x returns FileOutput[]; .toString() gives the CDN URL in all versions
+    const imageUrls = (output as unknown[])
+      .map((item) => String(item))
+      .filter(Boolean);
+
+    return NextResponse.json({ imageUrls, assembledPrompt, userPrompt });
   } catch (err) {
     console.error("[generate-image]", err);
     const message = err instanceof Error ? err.message : "Internal error";
