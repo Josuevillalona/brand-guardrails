@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useStore } from "@/store/useStore";
 import { GeneratedImage, BrandScore } from "@/types";
@@ -350,13 +351,21 @@ function ImageCard({
   const isOnBrand  = score?.label === "on-brand";
   const failLabel  = score?.failingDimension ? DIM_LABELS_SHORT[score.failingDimension] : "alignment";
 
-  // Hover tooltip state — 300ms delay, same pattern as canvas toolbar
+  // Portal tooltip — rendered at document.body so panel overflow:hidden can't clip it
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   function showDelayed() {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    tooltipTimer.current = setTimeout(() => setShowTooltip(true), 300);
+    tooltipTimer.current = setTimeout(() => {
+      if (badgeRef.current) {
+        const r = badgeRef.current.getBoundingClientRect();
+        setTooltipPos({ top: r.top, left: r.right + 10 });
+      }
+      setShowTooltip(true);
+    }, 300);
   }
   function hide() {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
@@ -364,28 +373,25 @@ function ImageCard({
   }
 
   return (
-    <div
-      className="canva-card"
-      style={{ overflow: "visible", position: "relative" }}
-    >
-      {/* Score breakdown tooltip — floats above the card */}
-      {score && (
+    <>
+    <div className="canva-card">
+      {/* Score breakdown tooltip — portaled to body, position: fixed */}
+      {score && showTooltip && typeof document !== "undefined" && createPortal(
         <div
           onMouseEnter={() => { if (tooltipTimer.current) clearTimeout(tooltipTimer.current); }}
           onMouseLeave={hide}
           style={{
-            position: "absolute",
-            top: 0,
-            left: "calc(100% + 8px)",
+            position: "fixed",
+            top: tooltipPos.top,
+            left: tooltipPos.left,
             width: 260,
-            zIndex: 50,
+            zIndex: 9999,
             background: "white",
             borderRadius: "var(--radius-lg)",
             padding: 14,
             boxShadow: "0 4px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
             border: "1px solid rgba(0,0,0,0.07)",
-            opacity: showTooltip ? 1 : 0,
-            pointerEvents: showTooltip ? "auto" : "none",
+            opacity: 1,
             transition: "opacity 0.15s ease",
           }}
         >
@@ -399,7 +405,8 @@ function ImageCard({
             {score.explanation}
           </p>
           <DimensionBreakdown score={score} />
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Image */}
@@ -417,14 +424,14 @@ function ImageCard({
           unoptimized
         />
 
-        {/* Badge overlay — top-left, hover triggers tooltip */}
+        {/* Badge overlay — top-left, hover triggers portal tooltip */}
         <div style={{ position: "absolute", top: 6, left: 6 }}>
           {image.noBrandContext ? (
             <span className="score-badge-neutral">No brand</span>
           ) : image.scorePending ? (
             <span className="shimmer-pill">Analyzing…</span>
           ) : score ? (
-            <div onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default" }}>
+            <div ref={badgeRef} onMouseEnter={showDelayed} onMouseLeave={hide} style={{ cursor: "default" }}>
               <ScoreBadge score={score} compact />
             </div>
           ) : null}
@@ -537,5 +544,6 @@ function ImageCard({
         )}
       </div>
     </div>
+    </>
   );
 }
