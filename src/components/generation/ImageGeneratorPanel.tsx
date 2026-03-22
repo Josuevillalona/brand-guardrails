@@ -153,95 +153,192 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       </div>
 
 
-      {/* ── Brand context row (brand-active only) ── */}
-      {brandKit && (
+      {/* ── Canva-style top input block — always pinned below header ── */}
+      <div style={{ padding: "var(--space-3)", borderBottom: "1px solid var(--color-border-subtle)", flexShrink: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+
+        {/* Bordered prompt input with inline submit arrow — mirrors Canva search box */}
         <div style={{
           display: "flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-          padding: "var(--space-2) var(--space-4)",
-          background: "var(--canva-gray-50)",
-          borderBottom: "1px solid var(--color-border-default)",
-          flexShrink: 0,
+          flexDirection: "column",
+          border: "1.5px solid",
+          borderColor: "var(--canva-purple-400)",
+          borderRadius: "var(--radius-lg)",
+          background: "#fff",
+          overflow: "hidden",
+          boxShadow: "0 0 0 3px var(--canva-purple-50)",
+          transition: "box-shadow 0.15s, border-color 0.15s",
         }}>
-          <div style={{ display: "flex", gap: "var(--space-1)" }}>
-            {brandKit.colors.slice(0, 3).map((c, i) => (
-              <div
-                key={i}
-                title={c.descriptiveName}
-                className="canva-swatch"
-                style={{ width: 12, height: 12, background: c.hex }}
-              />
-            ))}
-          </div>
-          <span style={{
-            fontSize: "var(--text-xs)",
-            fontWeight: "var(--weight-medium)",
-            color: "var(--color-text-primary)",
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
-            {brandKit.companyName}
-          </span>
-          <button
-            onClick={() => setShowBrandSetup(true)}
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              fontSize: "var(--text-xs)",
-              color: "var(--canva-purple-500)",
-              fontFamily: "var(--font-sans)",
-              fontWeight: "var(--weight-medium)",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt);
+              }
             }}
-          >
-            Change
-          </button>
-        </div>
-      )}
-
-      {/* ── Scrollable middle — image results + centered prompt when empty ── */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        // When no images: center the prompt block vertically
-        justifyContent: images.length === 0 && !generating ? "center" : "flex-start",
-        padding: images.length === 0 && !generating ? "var(--space-4)" : "var(--space-3) var(--space-3) 0",
-        transition: "padding 0.2s ease",
-      }}>
-
-        {/* Image grid — visible once images exist */}
-        {(images.length > 0 || generating) && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
-
-            {/* Skeleton placeholders — top of grid when generating */}
-            {generating && [0, 1].map((i) => (
-              <div
-                key={`skel-${i}`}
+            placeholder="Describe the image you want…"
+            rows={2}
+            disabled={generating}
+            style={{
+              resize: "none",
+              border: "none",
+              outline: "none",
+              padding: "10px 12px 6px",
+              fontSize: "var(--text-sm)",
+              fontFamily: "var(--font-sans)",
+              color: "var(--color-text-primary)",
+              lineHeight: "var(--leading-normal)",
+              background: "transparent",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          />
+          {/* Bottom row: brand kit indicator + submit button */}
+          <div style={{ display: "flex", alignItems: "center", padding: "4px 8px 8px", gap: "var(--space-2)" }}>
+            {/* Brand context pill */}
+            {brandKit ? (
+              <button
+                onClick={() => setShowBrandSetup(true)}
+                title={brandKit.companyName}
                 style={{
-                  aspectRatio: "1",
-                  borderRadius: "var(--radius-lg)",
-                  background: "var(--canva-gray-100)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "var(--space-1)",
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "var(--canva-purple-50)", border: "1px solid var(--canva-purple-200)",
+                  borderRadius: "var(--radius-pill)", padding: "2px 8px 2px 4px",
+                  cursor: "pointer", flexShrink: 0,
                 }}
               >
+                <div style={{ display: "flex", gap: 2 }}>
+                  {brandKit.colors.slice(0, 3).map((c, i) => (
+                    <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: c.hex }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: 10, color: "var(--canva-purple-600)", fontFamily: "var(--font-sans)", fontWeight: 600, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {brandKit.companyName}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowBrandSetup(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  background: "none", border: "1px dashed var(--canva-purple-200)",
+                  borderRadius: "var(--radius-pill)", padding: "2px 8px",
+                  cursor: "pointer", flexShrink: 0,
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-400)" />
+                </svg>
+                <span style={{ fontSize: 10, color: "var(--canva-purple-500)", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
+                  Add brand kit
+                </span>
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            {/* Submit arrow button */}
+            <button
+              onClick={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
+              disabled={generating || (!prompt.trim() && images.length === 0)}
+              style={{
+                width: 30, height: 30, borderRadius: "50%",
+                background: (generating || (!prompt.trim() && images.length === 0)) ? "var(--canva-gray-200)" : "var(--canva-purple-500)",
+                border: "none", cursor: (generating || (!prompt.trim() && images.length === 0)) ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, transition: "background 0.15s",
+              }}
+            >
+              {generating ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 12L12 2M12 2H5M12 2V9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mode tabs — Templates | Layouts | Styles style */}
+        {brandKit && (
+          <div style={{ display: "flex", borderBottom: "1px solid var(--color-border-subtle)", margin: "0 -2px" }}>
+            {IMAGE_MODES.map((mode) => {
+              const isSelected = imageMode === mode.value;
+              return (
+                <button
+                  key={mode.value}
+                  onClick={() => setImageMode(mode.value)}
+                  onMouseEnter={(e) => {
+                    if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    modeHoverTimer.current = setTimeout(() => {
+                      setModeTooltipPos({ x: r.left + r.width / 2, y: r.top });
+                      setHoveredMode(mode.value);
+                    }, 300);
+                  }}
+                  onMouseLeave={() => {
+                    if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                    setHoveredMode(null); setModeTooltipPos(null);
+                  }}
+                  style={{
+                    flex: 1, padding: "6px 4px", border: "none", background: "none",
+                    fontFamily: "var(--font-sans)", fontSize: "var(--text-xs)",
+                    fontWeight: isSelected ? "var(--weight-bold)" : "var(--weight-medium)",
+                    color: isSelected ? "var(--canva-purple-600)" : "var(--color-text-muted)",
+                    cursor: "pointer",
+                    borderBottom: isSelected ? "2px solid var(--canva-purple-500)" : "2px solid transparent",
+                    marginBottom: -1,
+                    transition: "color 0.15s, border-color 0.15s",
+                  }}
+                >
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Mode callout */}
+        {brandKit && (
+          <p style={{ margin: 0, fontSize: 10, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+            {imageMode === "hero" && "Strict brand scoring — color, render style, composition, and mood."}
+            {imageMode === "supporting" && "Brand atmosphere only — subject colors stay natural."}
+            {imageMode === "broll" && "Texture, mood, and lighting scored — composition is flexible."}
+          </p>
+        )}
+
+        {genError && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: "var(--space-2)",
+            padding: "var(--space-2) var(--space-3)",
+            background: "var(--color-score-off-bg)", border: "1px solid var(--color-score-off-border)",
+            borderRadius: "var(--radius-md)",
+          }}>
+            <svg style={{ flexShrink: 0, marginTop: 1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", lineHeight: "var(--leading-relaxed)" }}>
+              {genError}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Scrollable results area ── */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-3)" }}>
+
+        {/* Image grid */}
+        {(images.length > 0 || generating) && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "var(--space-2)" }}>
+            {generating && [0, 1].map((i) => (
+              <div key={`skel-${i}`} style={{ aspectRatio: "1", borderRadius: "var(--radius-lg)", background: "var(--canva-gray-100)", display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-1)" }}>
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3}s` }} />
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.15}s` }} />
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
               </div>
             ))}
-
-            {/* Existing images — hidden during new-prompt generation, visible during alternative */}
             {(!generating || generatingAlt) && images.slice(0, Math.floor(width / 110) * 2).map((img) => (
               <ImageCard
                 key={img.id}
@@ -253,99 +350,32 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           </div>
         )}
 
-        {/* ── Prompt block — centered when empty, bottom when has images ── */}
+        {/* Empty state */}
         {images.length === 0 && !generating && (
-          <>
-            {/* Icon + hint text above textarea when first opening */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "var(--space-3)",
-              marginBottom: "var(--space-4)",
-            }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: "var(--radius-pill)",
-                background: "var(--canva-purple-50)",
-                border: "1px solid var(--canva-purple-200)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                color: "var(--canva-purple-500)",
-              }}>
-                ✦
-              </div>
-              <p style={{
-                fontSize: "var(--text-xs)",
-                color: "var(--color-text-muted)",
-                textAlign: "center",
-                lineHeight: "var(--leading-relaxed)",
-                margin: 0,
-              }}>
-                {brandKit
-                  ? "Describe an image — it'll be generated and scored against your brand kit"
-                  : "Describe an image to get started. Add a brand kit to enable scoring."}
-              </p>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "var(--space-3)", paddingBottom: "var(--space-8)", textAlign: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: "var(--radius-pill)", background: "var(--canva-purple-50)", border: "1px solid var(--canva-purple-200)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--canva-purple-500)" }}>
+              ✦
             </div>
-
-            {/* Prompt controls inline */}
-            <PromptControls
-              prompt={prompt}
-              setPrompt={setPrompt}
-              generating={generating}
-              genError={genError}
-              brandKit={!!brandKit}
-              imageMode={imageMode}
-              setImageMode={setImageMode}
-              hoveredMode={hoveredMode}
-              setHoveredMode={setHoveredMode}
-              modeTooltipPos={modeTooltipPos}
-              setModeTooltipPos={setModeTooltipPos}
-              modeHoverTimer={modeHoverTimer}
-              hasImages={images.length > 0}
-              onGenerate={() => generate(prompt)}
-              onClose={onClose}
-              onAddBrand={() => setShowBrandSetup(true)}
-              showAddBrand={!brandKit}
-            />
-          </>
+            <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-muted)", lineHeight: "var(--leading-relaxed)", maxWidth: 180 }}>
+              {brandKit
+                ? "Describe an image above — it'll be generated and scored against your brand kit"
+                : "Describe an image above. Add a brand kit to enable brand scoring."}
+            </p>
+          </div>
         )}
       </div>
 
-      {/* ── Bottom bar — prompt + actions once images exist ── */}
-      {(images.length > 0 || generating) && (
-        <div style={{
-          padding: "var(--space-3)",
-          borderTop: "1px solid var(--color-border-subtle)",
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-2)",
-        }}>
-          <PromptControls
-            prompt={prompt}
-            setPrompt={setPrompt}
-            generating={generating}
-            genError={genError}
-            brandKit={!!brandKit}
-            imageMode={imageMode}
-            setImageMode={setImageMode}
-            hoveredMode={hoveredMode}
-            setHoveredMode={setHoveredMode}
-            modeTooltipPos={modeTooltipPos}
-            setModeTooltipPos={setModeTooltipPos}
-            modeHoverTimer={modeHoverTimer}
-            hasImages={images.length > 0}
-            onGenerate={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
-            onClose={onClose}
-            onAddBrand={() => setShowBrandSetup(true)}
-            showAddBrand={!brandKit}
-          />
-        </div>
-      )}
+      {/* Back link */}
+      <div style={{ padding: "var(--space-2) var(--space-3)", borderTop: "1px solid var(--color-border-subtle)", flexShrink: 0 }}>
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "var(--text-xs)", color: "var(--color-text-muted)", fontFamily: "var(--font-sans)", padding: 0, transition: "color var(--transition-fast)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+        >
+          ← Go back
+        </button>
+      </div>
 
       {/* ── Off-brand override reason modal ── */}
       {overrideImg && createPortal(
@@ -467,7 +497,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   );
 }
 
-// ── Shared prompt controls (textarea + mode selector + generate button) ────────
+// ── (PromptControls removed — logic inlined into main panel) ────────────────
 
 interface PromptControlsProps {
   prompt: string;
