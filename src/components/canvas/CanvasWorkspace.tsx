@@ -276,9 +276,6 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
             <path d="M10 2l1.8 5.4H17l-4.5 3.3 1.7 5.3L10 13l-4.2 3 1.7-5.3L3 7.4h5.2L10 2z" fill="currentColor" />
           </svg>
         </IconItem>
-        <IconItem label="Add text" active={false} onClick={addText}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "var(--color-text-icon)" }}>T</span>
-        </IconItem>
         <IconItem
           label="Brand"
           active={showBrand}
@@ -287,6 +284,9 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 2L13.5 7H18L14 11.5L15.5 17L10 14L4.5 17L6 11.5L2 7H6.5L10 2Z" fill="currentColor" opacity="0.85" />
           </svg>
+        </IconItem>
+        <IconItem label="Add text" active={false} onClick={addText}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "var(--color-text-icon)" }}>T</span>
         </IconItem>
       </div>
 

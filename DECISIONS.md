@@ -263,6 +263,147 @@ should produce 75+ even with minor secondary drift.
 
 ---
 
+---
+
+## 9. Alternative generation: dimension name only → dimension + specific visual failures
+
+**Initial approach**
+"Generate alternative" passed only the `failingDimension` name (e.g. `"colorAlignment"`) to
+`buildAlternativePrompt`. The function added a generic reinforcement clause for that dimension.
+
+**Finding**
+The reinforcement was accurate in category but not specific to the actual image. Two images can
+both fail `colorAlignment` for completely different reasons — one because the colors are too
+saturated, another because the brand's cool tones were replaced by warm ones. A generic
+reinforcement clause doesn't know which problem to fix.
+
+**Change**
+`score.issues[]` and `score.explanation` (Claude's own written diagnosis of the image) are now
+forwarded through the call chain: `onGetAlternative` → `generate()` → API route →
+`buildAlternativePrompt`. The prompt appends:
+- `"correct these specific issues: [issue1]; [issue2]"`
+- `"previous attempt failed because: [explanation]"`
+
+This closes the loop between the scorer and the generator — the model generating the
+alternative now has the scorer's exact written diagnosis of what was wrong.
+
+**Trade-offs**
+- Adds ~50–100 tokens per alternative call
+- Issues are written in Claude's evaluation language, not pure FLUX visual language. Mitigated
+  because the issues tend to be visually descriptive ("colors too saturated", "background
+  too bright") rather than abstract
+
+---
+
+## 10. FLUX guidance: fixed 3.5 → mode-adaptive (3.5 normal / 5.0 alternative)
+
+**Finding**
+FLUX guidance at 3.5 is "balanced prompt adherence" — the model is free to interpret loosely.
+For a standard generation this is correct. For an alternative generation where we've injected
+specific corrections, the model needs to follow the additions more strictly. At 3.5, the
+reinforcement block was being partially ignored.
+
+**Change**
+`guidance: isAlternative ? 5.0 : 3.5`. Normal generations stay at 3.5. Alternative generations
+bump to 5.0 to tighten adherence to the correction instructions.
+
+**Trade-offs**
+- Higher guidance can produce mild over-processing artifacts at the edges of complex prompts.
+  5.0 is well within FLUX's safe range and was tested to not cause quality regressions.
+
+---
+
+## 11. noProhibited false positives: color inference → explicit logo detection only
+
+**Finding**
+Claude vision was setting `noProhibited: false` (triggering the hard off-brand override) when
+an image contained colors associated with a competitor brand. For example: a pink jacket on a
+passenger in an Uber-branded prompt was being interpreted as Lyft branding. The scoring prompt
+said "detect ANY prohibited element" with no precision requirement.
+
+**Change**
+Added explicit instruction to the scoring prompt:
+> "noProhibited: false ONLY if a prohibited element is explicitly and unambiguously visible —
+> a legible logo, identifiable brand mark, or clearly depicted banned object. Do NOT set
+> noProhibited: false based on color similarity alone. When uncertain, keep noProhibited: true."
+
+**Trade-offs**
+- Slightly increases false negative rate (missed actual violations). Accepted: a false positive
+  (correctly scored image flagged as off-brand) is worse UX than a rare false negative.
+
+---
+
+## 12. Supporting mode scoring: "food, objects" → explicit human subject coverage
+
+**Finding**
+The supporting mode instruction read: *"Subjects (food, objects) have natural colors — do not
+penalize for this."* Human lifestyle subjects (people, families, skin tones, clothing) were not
+listed, so Claude vision was still penalizing a warm family-in-car image against Uber's black/
+white palette even in supporting mode.
+
+**Change**
+Updated to: *"Subjects — including people, their skin tones, hair, and clothing — have natural
+colors. Do NOT penalize for this."*
+
+**Trade-offs**
+- None. The existing intent always covered human subjects; the text just didn't say so.
+
+---
+
+## 13. Brand extractor: generic "competing brand logos" → named competitors
+
+**Finding**
+Prohibited elements were being extracted as generic phrases ("competing brand logos") that go
+directly into the FLUX negative prompt. Generic phrases have weak effect on diffusion models.
+For Uber, FLUX was generating rideshare imagery that occasionally included Lyft visual trade
+dress (pink/magenta) because the negative prompt didn't name Lyft specifically.
+
+**Change**
+Updated extraction prompt to instruct Claude to name actual direct competitors:
+> "For well-known brands, name actual direct competitors (e.g. for Uber: 'Lyft branding or
+> pink trade dress', 'competing rideshare logos'). Be concrete and visual, not abstract."
+
+**Trade-offs**
+- Requires re-extraction to take effect on existing brand kits
+- Claude may not know competitor names for niche brands — falls back to generic descriptions,
+  which is acceptable
+
+---
+
+## 14. Background brand extraction: silent completion → visible progress + completion signal
+
+**Finding**
+If a user started brand extraction and closed the modal, the async fetch continued in the
+background (Zustand state, not React state) and silently applied the brand kit on completion.
+Users had no idea this happened — the brand kit would just appear applied without explanation.
+
+**Change**
+- During extraction (`brandExtracting: true`): nav shows animated dots + "Extracting brand…";
+  brand panel shows a dedicated extracting state with the same messaging
+- On completion: nav color swatches get a brief ring highlight; label flashes
+  "[CompanyName] ready" for 2 seconds then settles
+- Behavior unchanged: background fetch continues regardless of modal state
+
+**Trade-offs**
+- Extraction is not cancellable. If the user navigates away and back, the brand kit will
+  silently apply. This is acceptable — canceling would lose all extraction progress for no
+  benefit (the fetch is already in flight).
+
+---
+
+## 15. Default image mode: supporting → hero
+
+**Decision**
+Changed the default mode from `"supporting"` to `"hero"`.
+
+**Reasoning**
+Hero mode is full brand enforcement — the most demonstrably impressive mode for a first
+impression. Supporting mode was a sensible default for real-world usage (most brand content
+is lifestyle/supporting), but for a prototype demo the first generation should show the
+system at maximum brand discipline.
+
+---
+
 ## Current state summary
 
 | Component              | Initial                     | Current                                        |
@@ -273,7 +414,14 @@ should produce 75+ even with minor secondary drift.
 | Prompt Block 3         | Global color palette        | Environmental/ambient tones; natural subject colors |
 | Prompt Block 7         | `--no` Midjourney syntax    | "Do not include:" natural language             |
 | Image generation       | DALL-E 3, 2× parallel calls | FLUX.1-dev via Replicate, single call num_outputs: 2 |
+| Alternative generation | Dimension name only         | Dimension + score.issues + score.explanation   |
+| Alternative guidance   | 3.5 (same as normal)        | 5.0 (tighter adherence to corrections)         |
 | Scoring                | Single aggregate score      | 6-dimension rubric + hard prohibited override  |
 | Scoring enforcement    | Hero-mode for all images    | imageMode selector (Hero / Supporting / B-roll) |
 | Scorer intent context  | None                        | userPrompt passed; subject matter treated as deliberate |
 | Score calibration      | Conservative 55–75 range    | Explicit 0–100 band instructions               |
+| noProhibited trigger   | Any color/element inference | Explicit visible logos only                    |
+| Supporting mode scope  | Food and objects only        | Food, objects, and human subjects              |
+| Prohibited elements    | Generic phrases              | Named competitors + visual trade dress         |
+| Default image mode     | Supporting                  | Hero                                           |
+| Extraction progress    | Silent background            | Nav indicator + brand panel state + completion flash |

@@ -186,7 +186,8 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
             rows={2}
             disabled={generating}
             style={{
-              resize: "none",
+              resize: "vertical",
+              minHeight: 52,
               border: "none",
               outline: "none",
               padding: "10px 12px 6px",
@@ -258,8 +259,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                 </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 12L12 2M12 2H5M12 2V9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                  {/* 4-point sparkle — AI generation symbol */}
+                  <path d="M7.5 1C7.5 1 8.1 4.4 9.5 5.5C10.9 6.6 14 7.5 14 7.5C14 7.5 10.9 8.4 9.5 9.5C8.1 10.6 7.5 14 7.5 14C7.5 14 6.9 10.6 5.5 9.5C4.1 8.4 1 7.5 1 7.5C1 7.5 4.1 6.6 5.5 5.5C6.9 4.4 7.5 1 7.5 1Z" fill="#fff"/>
                 </svg>
               )}
             </button>
