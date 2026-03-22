@@ -3,13 +3,14 @@ import { ImageMode } from "@/lib/image-scorer";
 
 // Universal quality exclusions — fire on every call regardless of brand rules
 const UNIVERSAL_NEGATIVE = [
-  "stock photo clichés",
+  "artificial forced poses",
+  "plastic smiles",
   "lens flare",
   "clip art",
   "watermark",
   "low quality",
   "pixelated",
-  "generic corporate imagery",
+  "corporate infographic style",
 ];
 
 /**
@@ -56,12 +57,11 @@ export function buildStructuredBrandPrompt(
         `subject rendered with natural authentic colors`,
       ].join(", ")
     : imageMode === "supporting"
-    // Supporting: ambient palette only — subject (food, objects, people) keeps natural colors
+    // Supporting: subject takes visual priority — brand signals live in environment/grade only
     ? [
-        `ambient environment and background tones informed by ${colorNames}`,
-        `${brandKit.colorTemperature} color temperature`,
+        `subject rendered with fully natural realistic colors — skin tones, clothing, and details unaltered`,
+        `background and environment carry the overall ${brandKit.colorTemperature} color temperature`,
         brandKit.colorGrade,
-        `foreground subject colors must be natural and realistic, not tinted`,
       ].join(", ")
     // B-roll: overall color feel and grade only — no palette enforcement
     : [

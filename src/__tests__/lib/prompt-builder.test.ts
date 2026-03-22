@@ -89,13 +89,12 @@ describe("buildStructuredBrandPrompt", () => {
   describe("supporting mode", () => {
     it("uses ambient palette language, not strict enforcement", () => {
       const result = buildStructuredBrandPrompt("prompt", mockBrandKit, "supporting");
-      expect(result).toContain("ambient environment");
       expect(result).not.toContain("background and environmental tones:");
     });
 
     it("instructs natural foreground subject colors", () => {
       const result = buildStructuredBrandPrompt("prompt", mockBrandKit, "supporting");
-      expect(result).toContain("natural and realistic");
+      expect(result).toContain("natural realistic colors");
     });
   });
 
@@ -180,7 +179,7 @@ describe("getBrandPromptBlocks", () => {
     const blocks = getBrandPromptBlocks("prompt", mockBrandKit);
     const avoidBlock = blocks.find((b) => b.label === "Avoid");
     expect(avoidBlock?.value).toContain("text overlays");
-    expect(avoidBlock?.value).toContain("watermark");
+    expect(avoidBlock?.value).toContain("lens flare");
   });
 
   it("Colors block contains descriptive names joined with ·", () => {
