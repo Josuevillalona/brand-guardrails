@@ -764,17 +764,18 @@ function ImageCard({
             onClick={onGetAlternative}
             style={{
               display: "block", width: "100%", boxSizing: "border-box",
-              padding: "6px 4px",
+              padding: "6px 8px",
               background: "var(--color-action-primary)",
               color: "var(--color-text-on-accent)",
               border: "none", borderRadius: "var(--radius-pill)",
               fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
-              cursor: "pointer", textAlign: "center", lineHeight: 1.3,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              cursor: "pointer", lineHeight: 1.3,
               transition: "background 0.15s",
             }}
           >
-            ✦ Get on-brand
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>
+              ✦ Get on-brand
+            </span>
           </button>
           <button
             onClick={onPlaceDirect}
@@ -783,12 +784,13 @@ function ImageCard({
               background: "none", border: "none", cursor: "pointer",
               fontFamily: "var(--font-sans)", fontSize: 10,
               color: "var(--color-text-muted)", padding: "2px 0",
-              textAlign: "center", lineHeight: 1.3,
+              lineHeight: 1.3,
               textDecoration: "underline", textUnderlineOffset: 2,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
-            Place it anyway
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>
+              Place it anyway
+            </span>
           </button>
         </div>
       )}
@@ -812,18 +814,17 @@ function ImageCard({
               title="Re-generate avoiding prohibited elements"
               style={{
                 display: "block", width: "100%", boxSizing: "border-box",
-                padding: "6px 4px",
+                padding: "6px 8px",
                 background: "var(--canva-purple-50)",
                 color: "var(--canva-purple-600)",
                 border: "1px solid var(--canva-purple-200)",
                 borderRadius: "var(--radius-pill)",
                 fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
-                cursor: "pointer", textAlign: "center", lineHeight: 1.3,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                cursor: "pointer", lineHeight: 1.3,
                 transition: "background 0.15s, border-color 0.15s",
               }}
             >
-              ✦ Improve
+              <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>✦ Improve</span>
             </button>
             <button
               onClick={onRemove}
@@ -831,12 +832,10 @@ function ImageCard({
                 display: "block", width: "100%", boxSizing: "border-box",
                 background: "none", border: "none", cursor: "pointer",
                 fontFamily: "var(--font-sans)", fontSize: 10,
-                color: "var(--color-text-muted)", padding: "2px 0",
-                textAlign: "center", lineHeight: 1.3,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                color: "var(--color-text-muted)", padding: "2px 0", lineHeight: 1.3,
               }}
             >
-              Start over
+              <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>Start over</span>
             </button>
           </>
         ) : score && !isOnBrand ? (
@@ -847,18 +846,17 @@ function ImageCard({
               title={`Improve ${failLabel}`}
               style={{
                 display: "block", width: "100%", boxSizing: "border-box",
-                padding: "6px 4px",
+                padding: "6px 8px",
                 background: "var(--canva-purple-50)",
                 color: "var(--canva-purple-600)",
                 border: "1px solid var(--canva-purple-200)",
                 borderRadius: "var(--radius-pill)",
                 fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
-                cursor: "pointer", textAlign: "center", lineHeight: 1.3,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                cursor: "pointer", lineHeight: 1.3,
                 transition: "background 0.15s, border-color 0.15s",
               }}
             >
-              ✦ Improve
+              <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>✦ Improve</span>
             </button>
             <button
               onClick={onPlace}
@@ -866,12 +864,10 @@ function ImageCard({
                 display: "block", width: "100%", boxSizing: "border-box",
                 background: "none", border: "none", cursor: "pointer",
                 fontFamily: "var(--font-sans)", fontSize: 10,
-                color: "var(--color-text-muted)", padding: "2px 0",
-                textAlign: "center", lineHeight: 1.3,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                color: "var(--color-text-muted)", padding: "2px 0", lineHeight: 1.3,
               }}
             >
-              Use anyway
+              <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>Use anyway</span>
             </button>
           </>
         ) : (
@@ -880,17 +876,16 @@ function ImageCard({
             onClick={onPlace}
             style={{
               display: "block", width: "100%", boxSizing: "border-box",
-              padding: "6px 4px",
+              padding: "6px 8px",
               background: "var(--color-action-primary)",
               color: "var(--color-text-on-accent)",
               border: "none", borderRadius: "var(--radius-pill)",
               fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
-              cursor: "pointer", textAlign: "center", lineHeight: 1.3,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              cursor: "pointer", lineHeight: 1.3,
               transition: "background 0.15s",
             }}
           >
-            Use this image
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>Use this image</span>
           </button>
         )}
       </div>
