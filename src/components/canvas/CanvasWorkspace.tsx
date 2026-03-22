@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
-import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
 import { useStore } from "@/store/useStore";
 import { TextElement, ImageElement } from "@/types";
@@ -102,48 +101,86 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
   const [exporting, setExporting] = useState(false);
 
   async function exportCanvas() {
-    if (!canvasSurfaceRef.current || exporting) return;
+    if (exporting) return;
     setExporting(true);
 
-    // Replicate CDN images don't send CORS headers, so html2canvas can't read
-    // them directly. Proxy each <img> through our own API, swap to a blob URL,
-    // capture, then restore — all before/after the html2canvas call.
-    const imgEls = Array.from(canvasSurfaceRef.current.querySelectorAll("img"));
-    const origSrcs: string[] = [];
-    const blobUrls: string[] = [];
-
-    await Promise.all(imgEls.map(async (img, i) => {
-      origSrcs[i] = img.src;
-      try {
-        const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(img.src)}`);
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        blobUrls[i] = blobUrl;
-        await new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = blobUrl;
-        });
-      } catch { /* keep original src if proxy fails */ }
-    }));
-
     try {
-      const canvas = await html2canvas(canvasSurfaceRef.current, {
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        scale: 2,
-      });
+      const SCALE = 2; // retina
+      const offscreen = document.createElement("canvas");
+      offscreen.width  = CANVAS_W * SCALE;
+      offscreen.height = CANVAS_H * SCALE;
+      const ctx = offscreen.getContext("2d")!;
+      ctx.scale(SCALE, SCALE);
+
+      // White background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Draw elements in z-order
+      const sorted = [...canvasElements].sort((a, b) => a.zIndex - b.zIndex);
+
+      for (const el of sorted) {
+        if (el.type === "image") {
+          try {
+            const res = await fetch(`/api/proxy-image?url=${encodeURIComponent((el as import("@/types").ImageElement).imageUrl)}`);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new window.Image();
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              img.src = blobUrl;
+            });
+            // Cover crop: center the image within the element bounds
+            const scale = Math.max(el.width / img.naturalWidth, el.height / img.naturalHeight);
+            const sw = el.width  / scale;
+            const sh = el.height / scale;
+            const sx = (img.naturalWidth  - sw) / 2;
+            const sy = (img.naturalHeight - sh) / 2;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(el.x, el.y, el.width, el.height);
+            ctx.clip();
+            ctx.drawImage(img, sx, sy, sw, sh, el.x, el.y, el.width, el.height);
+            ctx.restore();
+            URL.revokeObjectURL(blobUrl);
+          } catch { /* skip image if proxy fails */ }
+
+        } else if (el.type === "text") {
+          const textEl = el as import("@/types").TextElement;
+          const PAD    = 4;
+          const lineH  = textEl.fontSize * 1.5;
+          ctx.font      = `${textEl.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+          ctx.fillStyle = textEl.color;
+          ctx.textBaseline = "top";
+
+          // Wrap text to fit element width, respecting explicit newlines
+          const paragraphs = textEl.content.split("\n");
+          let y = textEl.y + PAD;
+          for (const para of paragraphs) {
+            const words = para.split(" ");
+            let line = "";
+            for (const word of words) {
+              const test = line ? `${line} ${word}` : word;
+              if (ctx.measureText(test).width > textEl.width - PAD * 2 && line) {
+                ctx.fillText(line, textEl.x + PAD, y);
+                line = word;
+                y += lineH;
+              } else {
+                line = test;
+              }
+            }
+            if (line) ctx.fillText(line, textEl.x + PAD, y);
+            y += lineH;
+          }
+        }
+      }
+
       const link = document.createElement("a");
       link.download = "brand-guardrails-canvas.png";
-      link.href = canvas.toDataURL("image/png");
+      link.href = offscreen.toDataURL("image/png");
       link.click();
     } finally {
-      // Restore original srcs and free blob memory
-      imgEls.forEach((img, i) => {
-        if (origSrcs[i]) img.src = origSrcs[i];
-        if (blobUrls[i]) URL.revokeObjectURL(blobUrls[i]);
-      });
       setExporting(false);
     }
   }
