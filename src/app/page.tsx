@@ -172,7 +172,7 @@ export default function Home() {
 
         <div className="canva-nav-divider" />
 
-        <span className="canva-nav-label">Canva Teams concept</span>
+        <span className="canva-nav-label">Prototype</span>
 
         <div className="canva-nav-spacer" />
 
