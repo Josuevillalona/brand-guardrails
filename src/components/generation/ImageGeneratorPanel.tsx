@@ -35,6 +35,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const modeHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Maps generated image id → canvas element id (set when user places image before scoring finishes)
   const placedCanvasIds = useRef<Map<string, string>>(new Map());
+  // Override reason modal
+  const [overrideImg, setOverrideImg] = useState<GeneratedImage | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
 
   async function generate(
     userPrompt: string,
@@ -104,6 +107,16 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   }
 
   function placeOnCanvas(img: GeneratedImage) {
+    // Off-brand images require an override reason before placing
+    if (img.score?.label === "off-brand") {
+      setOverrideImg(img);
+      setOverrideReason("");
+      return;
+    }
+    commitPlace(img);
+  }
+
+  function commitPlace(img: GeneratedImage, reason?: string) {
     const existingImages = canvasElements.filter((el) => el.type === "image");
     const offset = existingImages.length * 20;
     const canvasId = addImageElement({
@@ -116,6 +129,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       prompt: img.prompt,
       score: img.score,
       scorePending: img.scorePending,
+      overrideReason: reason,
     });
     // Track mapping so scoreImage can push results back if scoring finishes later
     if (img.scorePending) placedCanvasIds.current.set(img.id, canvasId);
@@ -332,9 +346,20 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         />
 
         {genError && (
-          <p style={{ fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", margin: 0 }}>
-            {genError}
-          </p>
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: "var(--space-2)",
+            padding: "var(--space-2) var(--space-3)",
+            background: "var(--color-score-off-bg)",
+            border: "1px solid var(--color-score-off-border)",
+            borderRadius: "var(--radius-md)",
+          }}>
+            <svg style={{ flexShrink: 0, marginTop: 1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", lineHeight: "var(--leading-relaxed)" }}>
+              {genError}
+            </p>
+          </div>
         )}
 
         {/* Intent selector — brand-active only */}
@@ -413,6 +438,21 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           </div>
         )}
 
+        {/* Mode callout — shown when brand kit active */}
+        {brandKit && (
+          <p style={{
+            margin: 0,
+            fontSize: 10,
+            color: "var(--color-text-muted)",
+            lineHeight: 1.5,
+            letterSpacing: "0.01em",
+          }}>
+            {imageMode === "hero" && "Scores color, render style, composition, and mood at full brand standards."}
+            {imageMode === "supporting" && "Scores brand atmosphere; subject colors stay natural and realistic."}
+            {imageMode === "broll" && "Scores texture, mood, and lighting only — composition is flexible."}
+          </p>
+        )}
+
         <button
           onClick={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
           disabled={generating || (!prompt.trim() && images.length === 0)}
@@ -465,6 +505,123 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           fontWeight: 400,
         }}>
           {IMAGE_MODES.find(m => m.value === hoveredMode)?.tooltip}
+        </div>,
+        document.body
+      )}
+
+      {/* ── Off-brand override reason modal ── */}
+      {overrideImg && createPortal(
+        <div
+          onClick={() => setOverrideImg(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-default)",
+              borderRadius: "var(--radius-lg)",
+              padding: "var(--space-5)",
+              width: 320,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+                background: "rgba(239,68,68,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
+                  Off-brand image
+                </p>
+                <p style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-muted)", lineHeight: "var(--leading-relaxed)" }}>
+                  This image scored below brand thresholds. Provide a reason to continue.
+                </p>
+              </div>
+            </div>
+
+            {/* Reason textarea */}
+            <textarea
+              autoFocus
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              placeholder="e.g. Approved by brand team for campaign exception"
+              rows={3}
+              style={{
+                width: "100%",
+                fontSize: "var(--text-xs)",
+                fontFamily: "var(--font-sans)",
+                color: "var(--color-text-primary)",
+                background: "var(--color-bg-surface)",
+                border: "1px solid var(--color-border-default)",
+                borderRadius: "var(--radius-md)",
+                padding: "var(--space-2) var(--space-3)",
+                resize: "none",
+                outline: "none",
+                boxSizing: "border-box",
+                lineHeight: "var(--leading-relaxed)",
+                marginBottom: "var(--space-4)",
+                transition: "border-color 0.15s",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--canva-purple-400)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border-default)")}
+            />
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: "var(--space-2)" }}>
+              <button
+                onClick={() => setOverrideImg(null)}
+                style={{
+                  flex: 1, padding: "7px 0",
+                  border: "1px solid var(--color-border-default)",
+                  borderRadius: "var(--radius-md)",
+                  background: "transparent",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--weight-medium)",
+                  fontFamily: "var(--font-sans)",
+                  color: "var(--color-text-secondary)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!overrideReason.trim()}
+                onClick={() => {
+                  commitPlace(overrideImg, overrideReason.trim());
+                  setOverrideImg(null);
+                  setOverrideReason("");
+                }}
+                style={{
+                  flex: 1, padding: "7px 0",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  background: overrideReason.trim() ? "#ef4444" : "var(--color-bg-subtle)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--weight-medium)",
+                  fontFamily: "var(--font-sans)",
+                  color: overrideReason.trim() ? "#fff" : "var(--color-text-muted)",
+                  cursor: overrideReason.trim() ? "pointer" : "default",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                Place anyway
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

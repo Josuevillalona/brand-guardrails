@@ -98,6 +98,7 @@ export interface ImageElement extends CanvasElementBase {
   prompt: string;
   score: BrandScore | null;
   scorePending: boolean;
+  overrideReason?: string;    // set when user places an off-brand image with a reason
 }
 
 export type CanvasElement = TextElement | ImageElement;

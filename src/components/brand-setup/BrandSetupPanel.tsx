@@ -165,7 +165,9 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
               gap: "var(--space-3)",
               alignItems: "flex-start",
             }}>
-              <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⊘</span>
+              <svg style={{ flexShrink: 0, marginTop: 2 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
               <div>
                 <p style={{ margin: "0 0 var(--space-1)", fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-score-off-brand)" }}>
                   Extraction failed
