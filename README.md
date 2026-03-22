@@ -4,8 +4,6 @@ A Next.js prototype that enforces brand compliance **upstream** — at image gen
 
 The core argument: brand guardrails belong at the moment of creation, not in a downstream approval queue after the fact.
 
-![AI Brand Guardrails](public/carousel/1.png)
-
 ---
 
 ## What it does
