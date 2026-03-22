@@ -156,6 +156,45 @@ describe("buildAlternativePrompt", () => {
     const alt = buildAlternativePrompt("prompt", mockBrandKit, "unknownDimension");
     expect(alt).toBe(base);
   });
+
+  it("weaves scoreIssues into reinforcement when provided", () => {
+    const result = buildAlternativePrompt(
+      "prompt",
+      mockBrandKit,
+      "colorAlignment",
+      "hero",
+      ["colors too saturated", "blue tones missing"]
+    );
+    expect(result).toContain("correct these specific issues");
+    expect(result).toContain("colors too saturated");
+    expect(result).toContain("blue tones missing");
+  });
+
+  it("weaves scoreExplanation into reinforcement when provided", () => {
+    const result = buildAlternativePrompt(
+      "prompt",
+      mockBrandKit,
+      "renderStyleMatch",
+      "hero",
+      undefined,
+      "image rendered as illustration rather than photorealistic"
+    );
+    expect(result).toContain("previous attempt failed because");
+    expect(result).toContain("image rendered as illustration");
+  });
+
+  it("still contains negative block after score context injection", () => {
+    const result = buildAlternativePrompt(
+      "prompt",
+      mockBrandKit,
+      "colorAlignment",
+      "hero",
+      ["wrong palette"],
+      "colors did not match brand"
+    );
+    expect(result).toContain("Do not include:");
+    expect(result).toContain("text overlays");
+  });
 });
 
 describe("getBrandPromptBlocks", () => {

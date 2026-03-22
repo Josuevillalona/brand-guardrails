@@ -59,8 +59,9 @@ Schema:
 Rules:
 - colors: 3–6 entries. descriptiveName MUST be evocative and model-friendly ("rich emerald green", not "#2ECC71").
 - moodAdjectives: exactly 3 adjectives, brand-appropriate.
-- prohibitedElements: at least 3 specific off-brand items. Use brand-specific rules if evident;
-  otherwise sensible defaults (e.g. "competing brand logos", "dark gothic imagery", "childish cartoon characters").
+- prohibitedElements: at least 3 specific off-brand items. Use brand-specific rules where evident.
+  For well-known brands, name actual direct competitors (e.g. for Uber: "Lyft branding or pink trade dress", "competing rideshare logos"; for Pepsi: "Coca-Cola red and white branding").
+  Prohibited element strings go directly into image generation negative prompts — be concrete and visual, not abstract (e.g. "Lyft pink and magenta colors" not "competing brands").
 - depthOfField: be specific with photographic language — this directly removes the AI-generated flatness.
 - colorGrade: describe the post-processing treatment precisely — this prevents DALL-E oversaturation.
 - If you cannot confidently determine a field, make a reasonable brand-appropriate default.`;

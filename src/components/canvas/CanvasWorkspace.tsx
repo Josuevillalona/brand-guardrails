@@ -27,6 +27,7 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
     removeElement,
     addTextElement,
     brandKit,
+    brandExtracting,
     updateBrandKit,
     setShowBrandSetup,
   } = useStore();
@@ -556,6 +557,42 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
               )}
 
 
+            </div>
+          ) : brandExtracting ? (
+            /* Extracting state */
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: "var(--space-4)",
+              padding: "var(--space-6) var(--space-5)",
+            }}>
+              <div style={{
+                width: 52, height: 52,
+                borderRadius: "var(--radius-pill)",
+                background: "var(--canva-purple-50)",
+                border: "1px solid var(--canva-purple-200)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="canva-loading-dot"
+                      style={{ width: 6, height: 6, background: "var(--canva-purple-500)", animationDelay: `${i * 0.2}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                <p style={{ margin: 0, fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
+                  Extracting brand…
+                </p>
+                <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-muted)", lineHeight: "var(--leading-relaxed)" }}>
+                  Reading colors, style, and guidelines from your website.
+                </p>
+              </div>
             </div>
           ) : (
             /* Empty state */

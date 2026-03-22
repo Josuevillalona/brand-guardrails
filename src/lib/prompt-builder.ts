@@ -127,13 +127,18 @@ export function getBrandPromptBlocks(
 /**
  * Builds a targeted alternative prompt that reinforces the failing dimension.
  * Called when the user clicks "Get on-brand version" on a low-scoring image.
- * Reinforcements now reference the full 18-field kit.
+ *
+ * When scoreIssues / scoreExplanation are provided (from the prior Claude vision
+ * score), they are woven into the reinforcement so the model knows exactly which
+ * visual elements to correct — not just which dimension failed.
  */
 export function buildAlternativePrompt(
   userPrompt: string,
   brandKit: BrandKit,
   failingDimension: string | null,
-  imageMode: ImageMode = "hero"
+  imageMode: ImageMode = "hero",
+  scoreIssues?: string[],
+  scoreExplanation?: string
 ): string {
   const base = buildStructuredBrandPrompt(userPrompt, brandKit, imageMode);
 
@@ -168,7 +173,16 @@ export function buildAlternativePrompt(
   const extra = reinforcements[failingDimension];
   if (!extra) return base;
 
+  // Build specific correction context from prior score, if available
+  const correctionParts: string[] = [extra];
+  if (scoreIssues && scoreIssues.length > 0) {
+    correctionParts.push(`correct these specific issues: ${scoreIssues.join("; ")}`);
+  }
+  if (scoreExplanation) {
+    correctionParts.push(`previous attempt failed because: ${scoreExplanation}`);
+  }
+
   // Insert reinforcement before the negative block
   const parts = base.split(". Do not include: ");
-  return `${parts[0]}, ${extra}. Do not include: ${parts[1]}`;
+  return `${parts[0]}, ${correctionParts.join(", ")}. Do not include: ${parts[1]}`;
 }

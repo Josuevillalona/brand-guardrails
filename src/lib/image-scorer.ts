@@ -34,9 +34,9 @@ const MODE_INSTRUCTIONS: Record<ImageMode, string> = {
 Evaluate all dimensions strictly: color palette, render style, mood, composition, and narrative cohesion.
 overallCohesion: evaluate whether the image as a whole — subject, treatment, and aesthetic — feels like it belongs to this brand.`,
 
-  supporting: `This is a SUPPORTING image (contextual content — food, lifestyle, objects, environments).
+  supporting: `This is a SUPPORTING image (contextual content — people, food, lifestyle, objects, environments).
 IMPORTANT: The user deliberately chose this subject matter. Do not penalize subject choice.
-- colorAlignment: evaluate only the environment, background, and accent tones. Subjects (food, objects) have natural colors — do not penalize for this.
+- colorAlignment: evaluate only the environment, background, and accent tones. Subjects — including people, their skin tones, hair, and clothing — have natural colors. Do NOT penalize for this.
 - overallCohesion: evaluate AESTHETIC cohesion only — does the lighting, grade, render style, and atmosphere feel like this brand? Do NOT evaluate narrative or content strategy fit.
 - explanation: reference only aesthetic signals (lighting, grade, render style, atmosphere). Do not mention subject matter mismatch.`,
 
@@ -100,7 +100,8 @@ Return ONLY valid JSON matching this exact schema. No markdown, no explanation.
 }
 
 Scoring rules:
-- noProhibited: false if you detect ANY prohibited element → label MUST be "off-brand" regardless of other scores.
+- noProhibited: false ONLY if a prohibited element is explicitly and unambiguously visible — a legible logo, identifiable brand mark, or clearly depicted banned object. Do NOT set noProhibited: false based on color similarity alone (e.g. pink tones ≠ a competitor's logo). When uncertain, keep noProhibited: true. A false negative is better than a false positive here.
+- noProhibited: false → label MUST be "off-brand" regardless of other scores.
 - Dimension weights for ${imageMode} mode: ${MODE_WEIGHT_DISPLAY[imageMode]}.
 - score = weighted average using those weights.
 - label thresholds: score >= 80 → "on-brand", score >= 50 → "needs-review", score < 50 → "off-brand".

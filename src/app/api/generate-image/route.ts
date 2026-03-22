@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
       failingDimension = null,
       isAlternative = false,
       imageMode = "hero",
+      scoreIssues,
+      scoreExplanation,
     }: {
       userPrompt: string;
       brandKit: BrandKit | null;
@@ -21,6 +23,8 @@ export async function POST(req: NextRequest) {
       failingDimension?: string | null;
       isAlternative?: boolean;
       imageMode?: "hero" | "supporting" | "broll";
+      scoreIssues?: string[];
+      scoreExplanation?: string;
     } = await req.json();
 
     if (!userPrompt) {
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
     // imageMode shifts which blocks are enforced: hero=full, supporting=loosen colors, broll=atmosphere only.
     const assembledPrompt = brandKit
       ? isAlternative
-        ? buildAlternativePrompt(userPrompt, brandKit, failingDimension, imageMode)
+        ? buildAlternativePrompt(userPrompt, brandKit, failingDimension, imageMode, scoreIssues, scoreExplanation)
         : buildStructuredBrandPrompt(userPrompt, brandKit, imageMode)
       : userPrompt.trim();
 
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
         output_format: "webp",
         output_quality: 90,
         go_fast: false,      // full quality weights
-        guidance: 3.5,       // default — balanced prompt adherence
+        guidance: isAlternative ? 5.0 : 3.5, // higher adherence for targeted corrections
       },
     });
 
@@ -62,6 +66,13 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[generate-image]", err);
     const message = err instanceof Error ? err.message : "Internal error";
+    const isRateLimit = message.includes("429") || message.toLowerCase().includes("throttled") || message.toLowerCase().includes("rate limit");
+    if (isRateLimit) {
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429 }
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

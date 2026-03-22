@@ -120,7 +120,19 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
 }
 
 export default function Home() {
-  const { phase, brandKit, setShowBrandSetup, showBrandSetup, canvasElements } = useStore();
+  const { phase, brandKit, brandExtracting, setShowBrandSetup, showBrandSetup, canvasElements } = useStore();
+
+  // Flash "ready" when extraction completes
+  const [brandJustReady, setBrandJustReady] = useState(false);
+  const prevExtracting = useRef(false);
+  useEffect(() => {
+    if (prevExtracting.current && !brandExtracting && brandKit) {
+      setBrandJustReady(true);
+      const t = setTimeout(() => setBrandJustReady(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevExtracting.current = brandExtracting;
+  }, [brandExtracting, brandKit]);
   const workspaceRef = useRef<CanvasWorkspaceHandle>(null);
   const isEmpty = canvasElements.length === 0;
 
@@ -164,20 +176,49 @@ export default function Home() {
 
         <div className="canva-nav-spacer" />
 
-        {/* Brand Kit indicator */}
-        {brandKit && (
-          <div className="flex items-center gap-2 mr-2">
+        {/* Brand Kit indicator — shows extraction progress or applied kit */}
+        {brandExtracting ? (
+          <div className="flex items-center gap-2 mr-2" style={{ opacity: 0.85 }}>
+            <div style={{ display: "flex", gap: 3 }}>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="canva-loading-dot"
+                  style={{ width: 5, height: 5, animationDelay: `${i * 0.2}s` }}
+                />
+              ))}
+            </div>
+            <span className="canva-nav-label">Extracting brand…</span>
+          </div>
+        ) : brandKit && (
+          <div
+            className="flex items-center gap-2 mr-2"
+            style={{
+              transition: "opacity 0.4s ease",
+              opacity: 1,
+            }}
+          >
             <div className="flex gap-1">
               {brandKit.colors.slice(0, 4).map((c, i) => (
                 <div
                   key={i}
                   className="w-3.5 h-3.5 rounded-full border border-white/30"
-                  style={{ backgroundColor: c.hex }}
+                  style={{
+                    backgroundColor: c.hex,
+                    boxShadow: brandJustReady ? `0 0 0 2px white, 0 0 0 3.5px ${c.hex}` : undefined,
+                    transition: "box-shadow 0.3s ease",
+                  }}
                 />
               ))}
             </div>
-            <span className="canva-nav-label truncate max-w-[120px]">
-              {brandKit.companyName}
+            <span
+              className="canva-nav-label truncate max-w-[120px]"
+              style={{
+                color: brandJustReady ? "rgba(255,255,255,1)" : undefined,
+                transition: "color 0.3s ease",
+              }}
+            >
+              {brandJustReady ? `${brandKit.companyName} ready` : brandKit.companyName}
             </span>
           </div>
         )}

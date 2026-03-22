@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useStore } from "@/store/useStore";
@@ -25,7 +25,7 @@ const IMAGE_MODES: { value: ImageMode; label: string; tooltip: string }[] = [
 export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const { brandKit, setShowBrandSetup, addImageElement, updateCanvasImageScore, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
-  const [imageMode, setImageMode] = useState<ImageMode>("supporting");
+  const [imageMode, setImageMode] = useState<ImageMode>("hero");
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [generatingAlt, setGeneratingAlt] = useState(false);
@@ -42,7 +42,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   async function generate(
     userPrompt: string,
     isAlternative = false,
-    failingDimension: string | null = null
+    failingDimension: string | null = null,
+    scoreIssues?: string[],
+    scoreExplanation?: string
   ) {
     if (!userPrompt.trim()) return;
     setGenerating(true);
@@ -53,9 +55,12 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPrompt, brandKit, count: 2, isAlternative, failingDimension, imageMode }),
+        body: JSON.stringify({ userPrompt, brandKit, count: 2, isAlternative, failingDimension, imageMode, scoreIssues, scoreExplanation }),
       });
       const data = await res.json();
+      if (res.status === 429 || data.error === "rate_limited") {
+        throw new Error("Slow down a little — too many requests at once. Wait a couple seconds and try again.");
+      }
       if (!res.ok) throw new Error(data.error || "Generation failed");
 
       const hasBrand = !!brandKit;
@@ -339,12 +344,19 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
               </div>
             ))}
-            {(!generating || generatingAlt) && images.slice(0, Math.floor(width / 110) * 2).map((img) => (
+            {images.slice(0, Math.floor(width / 110) * 2).map((img) => (
               <ImageCard
                 key={img.id}
                 image={img}
                 onPlace={() => placeOnCanvas(img)}
-                onGetAlternative={() => generate(img.userPrompt, true, img.score?.failingDimension ?? null)}
+                onPlaceDirect={() => commitPlace(img)}
+                onGetAlternative={() => generate(
+                  img.userPrompt,
+                  true,
+                  img.score?.failingDimension ?? null,
+                  img.score?.issues ?? undefined,
+                  img.score?.explanation ?? undefined
+                )}
               />
             ))}
           </div>
@@ -692,10 +704,12 @@ const DIM_LABELS_SHORT: Record<string, string> = {
 function ImageCard({
   image,
   onPlace,
+  onPlaceDirect,
   onGetAlternative,
 }: {
   image: GeneratedImage;
   onPlace: () => void;
+  onPlaceDirect: () => void;
   onGetAlternative: () => void;
 }) {
   const score = image.score;
@@ -708,13 +722,33 @@ function ImageCard({
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // After tooltip renders, measure its actual height and clamp to viewport
+  useEffect(() => {
+    if (!showTooltip || !tooltipRef.current) return;
+    const rect = tooltipRef.current.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (rect.bottom > vh - 8) {
+      setTooltipPos(prev => ({ ...prev, top: Math.max(8, vh - rect.height - 8) }));
+    }
+  }, [showTooltip]);
 
   function showDelayed() {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
     tooltipTimer.current = setTimeout(() => {
       if (badgeRef.current) {
         const r = badgeRef.current.getBoundingClientRect();
-        setTooltipPos({ top: r.top, left: r.right + 10 });
+        const TOOLTIP_W = 260;
+        const vw = window.innerWidth;
+
+        // Prefer right of badge; fall back to left if it would overflow
+        const left = r.right + 10 + TOOLTIP_W > vw
+          ? r.left - TOOLTIP_W - 10
+          : r.right + 10;
+
+        // Start top-aligned to badge — useEffect will clamp after render
+        setTooltipPos({ top: r.top, left });
       }
       setShowTooltip(true);
     }, 300);
@@ -730,6 +764,7 @@ function ImageCard({
       {/* Score breakdown tooltip — portaled to body, position: fixed */}
       {score && showTooltip && typeof document !== "undefined" && createPortal(
         <div
+          ref={tooltipRef}
           onMouseEnter={() => { if (tooltipTimer.current) clearTimeout(tooltipTimer.current); }}
           onMouseLeave={hide}
           style={{
@@ -818,7 +853,7 @@ function ImageCard({
               ✦ Generate alternative
             </button>
             <button
-              onClick={onPlace}
+              onClick={onPlaceDirect}
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%" }}
             >
               Use anyway
