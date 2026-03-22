@@ -104,6 +104,30 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
   async function exportCanvas() {
     if (!canvasSurfaceRef.current || exporting) return;
     setExporting(true);
+
+    // Replicate CDN images don't send CORS headers, so html2canvas can't read
+    // them directly. Proxy each <img> through our own API, swap to a blob URL,
+    // capture, then restore — all before/after the html2canvas call.
+    const imgEls = Array.from(canvasSurfaceRef.current.querySelectorAll("img"));
+    const origSrcs: string[] = [];
+    const blobUrls: string[] = [];
+
+    await Promise.all(imgEls.map(async (img, i) => {
+      origSrcs[i] = img.src;
+      try {
+        const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(img.src)}`);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        blobUrls[i] = blobUrl;
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = blobUrl;
+        });
+      } catch { /* keep original src if proxy fails */ }
+    }));
+
     try {
       const canvas = await html2canvas(canvasSurfaceRef.current, {
         useCORS: true,
@@ -115,6 +139,11 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
       link.href = canvas.toDataURL("image/png");
       link.click();
     } finally {
+      // Restore original srcs and free blob memory
+      imgEls.forEach((img, i) => {
+        if (origSrcs[i]) img.src = origSrcs[i];
+        if (blobUrls[i]) URL.revokeObjectURL(blobUrls[i]);
+      });
       setExporting(false);
     }
   }
