@@ -35,8 +35,6 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const modeHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Maps generated image id → canvas element id (set when user places image before scoring finishes)
   const placedCanvasIds = useRef<Map<string, string>>(new Map());
-  // Tier 2 toast — track which image IDs have already shown it this session
-  const shownToastIds = useRef<Set<string>>(new Set());
   const [activeToastImgId, setActiveToastImgId] = useState<string | null>(null);
 
   async function generate(
@@ -115,9 +113,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
     if (!img.score) { commitPlace(img); return; }
     if (!img.score.dimensions.noProhibited) return; // Tier 3 — hard block
     if (img.score.score >= 80) { commitPlace(img); return; } // Tier 1 — silent
-    // Tier 2 — soft toast, fires once per image per session
-    if (shownToastIds.current.has(img.id)) { commitPlace(img); return; }
-    shownToastIds.current.add(img.id);
+    // Tier 2 — always show confirmation toast; each image decides independently
     setActiveToastImgId(img.id);
   }
 
