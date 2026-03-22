@@ -331,14 +331,6 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           document.body
         )}
 
-        {/* Mode callout */}
-        {brandKit && (
-          <p style={{ margin: 0, fontSize: 10, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-            {imageMode === "hero" && "Strict brand scoring — color, render style, composition, and mood."}
-            {imageMode === "supporting" && "Brand atmosphere only — subject colors stay natural."}
-            {imageMode === "broll" && "Texture, mood, and lighting scored — composition is flexible."}
-          </p>
-        )}
 
         {genError && (
           <div style={{
