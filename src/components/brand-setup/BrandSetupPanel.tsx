@@ -77,6 +77,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Extraction failed");
       setBrandKit(data.brandKit);
+      setUrl("");
     } catch (err) {
       setBrandError(err instanceof Error ? err.message : "Extraction failed");
     } finally {
