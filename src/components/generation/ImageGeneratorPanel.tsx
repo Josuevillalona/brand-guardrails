@@ -737,34 +737,49 @@ function ImageCard({
         <div style={{
           position: "absolute", inset: 0,
           borderRadius: "var(--radius-lg)",
-          background: "rgba(255,255,255,0.96)",
+          background: "rgba(255,255,255,0.97)",
           backdropFilter: "blur(2px)",
           display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          gap: "var(--space-2)",
-          padding: "var(--space-3)",
+          alignItems: "stretch", justifyContent: "center",
+          gap: 6,
+          padding: "10px 8px",
           zIndex: 10,
+          boxSizing: "border-box",
+          overflow: "hidden",
         }}>
           <p style={{
             margin: 0, fontSize: 10, fontWeight: "var(--weight-bold)",
             color: "var(--color-text-primary)", textAlign: "center", lineHeight: 1.4,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           }}>
-            Needs review before placing
+            Needs review
           </p>
           <button
             onClick={onGetAlternative}
-            className="btn-primary"
-            style={{ width: "100%", justifyContent: "center", fontSize: 10, padding: "5px 8px" }}
+            style={{
+              display: "block", width: "100%", boxSizing: "border-box",
+              padding: "6px 4px",
+              background: "var(--color-action-primary)",
+              color: "var(--color-text-on-accent)",
+              border: "none", borderRadius: "var(--radius-pill)",
+              fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
+              cursor: "pointer", textAlign: "center", lineHeight: 1.3,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              transition: "background 0.15s",
+            }}
           >
-            ✦ Get on-brand version
+            ✦ Get on-brand
           </button>
           <button
             onClick={onPlaceDirect}
             style={{
+              display: "block", width: "100%", boxSizing: "border-box",
               background: "none", border: "none", cursor: "pointer",
-              fontSize: 10, color: "var(--color-text-muted)",
-              fontFamily: "var(--font-sans)", padding: "2px 0",
+              fontFamily: "var(--font-sans)", fontSize: 10,
+              color: "var(--color-text-muted)", padding: "2px 0",
+              textAlign: "center", lineHeight: 1.3,
               textDecoration: "underline", textUnderlineOffset: 2,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
             Place it anyway
@@ -776,31 +791,43 @@ function ImageCard({
       <div style={{
         display: "flex",
         flexDirection: "column",
-        gap: "var(--space-1)",
-        padding: "var(--space-1) var(--space-2) var(--space-2)",
+        gap: 4,
+        padding: "6px 8px 8px",
         borderTop: "1px solid var(--color-border-subtle)",
+        overflow: "hidden",
+        minWidth: 0,
+        boxSizing: "border-box",
       }}>
         {prohibited ? (
           // Tier 3 — hard block, no placement path
           <>
             <button
               onClick={onGetAlternative}
-              className="btn-ai"
-              style={{
-                width: "100%", justifyContent: "center",
-                fontSize: "var(--text-xs)", padding: "6px 8px",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
-              }}
               title="Re-generate avoiding prohibited elements"
+              style={{
+                display: "block", width: "100%", boxSizing: "border-box",
+                padding: "6px 4px",
+                background: "var(--canva-purple-50)",
+                color: "var(--canva-purple-600)",
+                border: "1px solid var(--canva-purple-200)",
+                borderRadius: "var(--radius-pill)",
+                fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
+                cursor: "pointer", textAlign: "center", lineHeight: 1.3,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                transition: "background 0.15s, border-color 0.15s",
+              }}
             >
               ✦ Improve
             </button>
             <button
               onClick={onRemove}
               style={{
+                display: "block", width: "100%", boxSizing: "border-box",
                 background: "none", border: "none", cursor: "pointer",
-                fontSize: 10, color: "var(--color-text-muted)",
-                fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%",
+                fontFamily: "var(--font-sans)", fontSize: 10,
+                color: "var(--color-text-muted)", padding: "2px 0",
+                textAlign: "center", lineHeight: 1.3,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}
             >
               Start over
@@ -811,22 +838,31 @@ function ImageCard({
           <>
             <button
               onClick={onGetAlternative}
-              className="btn-ai"
-              style={{
-                width: "100%", justifyContent: "center",
-                fontSize: "var(--text-xs)", padding: "6px 8px",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
-              }}
               title={`Improve ${failLabel}`}
+              style={{
+                display: "block", width: "100%", boxSizing: "border-box",
+                padding: "6px 4px",
+                background: "var(--canva-purple-50)",
+                color: "var(--canva-purple-600)",
+                border: "1px solid var(--canva-purple-200)",
+                borderRadius: "var(--radius-pill)",
+                fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
+                cursor: "pointer", textAlign: "center", lineHeight: 1.3,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                transition: "background 0.15s, border-color 0.15s",
+              }}
             >
               ✦ Improve
             </button>
             <button
               onClick={onPlace}
               style={{
+                display: "block", width: "100%", boxSizing: "border-box",
                 background: "none", border: "none", cursor: "pointer",
-                fontSize: 10, color: "var(--color-text-muted)",
-                fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%",
+                fontFamily: "var(--font-sans)", fontSize: 10,
+                color: "var(--color-text-muted)", padding: "2px 0",
+                textAlign: "center", lineHeight: 1.3,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}
             >
               Use anyway
@@ -834,7 +870,20 @@ function ImageCard({
           </>
         ) : (
           // Tier 1 — on-brand or unscored: silent placement
-          <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
+          <button
+            onClick={onPlace}
+            style={{
+              display: "block", width: "100%", boxSizing: "border-box",
+              padding: "6px 4px",
+              background: "var(--color-action-primary)",
+              color: "var(--color-text-on-accent)",
+              border: "none", borderRadius: "var(--radius-pill)",
+              fontFamily: "var(--font-sans)", fontSize: 10, fontWeight: "var(--weight-bold)",
+              cursor: "pointer", textAlign: "center", lineHeight: 1.3,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              transition: "background 0.15s",
+            }}
+          >
             Use this image
           </button>
         )}
