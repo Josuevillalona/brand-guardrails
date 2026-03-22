@@ -799,23 +799,7 @@ function ImageCard({
         </div>
       )}
 
-      {/* Static explanation row — always visible once scored */}
-      {score && !image.scorePending && (
-        <div style={{ padding: "var(--space-1) var(--space-2)", borderTop: "1px solid var(--color-border-subtle)" }}>
-          <span style={{
-            display: "block",
-            fontSize: "var(--text-xs)",
-            color: "var(--color-text-secondary)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>
-            {score.explanation}
-          </span>
-        </div>
-      )}
-
-      {/* Actions — stacked layout for narrow cards */}
+      {/* Actions */}
       <div style={{
         display: "flex",
         flexDirection: "column",
@@ -824,14 +808,22 @@ function ImageCard({
         borderTop: "1px solid var(--color-border-subtle)",
       }}>
         {(prohibited || (score && !isOnBrand)) ? (
-          <button
-            onClick={onGetAlternative}
-            className="btn-ai"
-            style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)", padding: "6px 8px" }}
-            title={prohibited ? "Re-generate avoiding prohibited elements" : `Improve ${failLabel}`}
-          >
-            ✦ Generate alternative
-          </button>
+          <>
+            <button
+              onClick={onGetAlternative}
+              className="btn-ai"
+              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)", padding: "6px 8px" }}
+              title={prohibited ? "Re-generate avoiding prohibited elements" : `Improve ${failLabel}`}
+            >
+              ✦ Generate alternative
+            </button>
+            <button
+              onClick={onPlace}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%" }}
+            >
+              Use anyway
+            </button>
+          </>
         ) : (
           <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
             Use this image
