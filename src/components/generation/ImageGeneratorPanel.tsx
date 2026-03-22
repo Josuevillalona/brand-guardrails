@@ -60,7 +60,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         throw new Error("Too many requests at once — wait a moment and try again.");
       }
       if (res.status === 402 || data.error === "out_of_credits") {
-        throw new Error("Image generation is unavailable right now — the API account is out of credits.");
+        throw new Error("Image generation is temporarily unavailable. Please try again later.");
       }
       if (!res.ok) throw new Error(data.error || "Generation failed");
 
