@@ -35,9 +35,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const modeHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Maps generated image id → canvas element id (set when user places image before scoring finishes)
   const placedCanvasIds = useRef<Map<string, string>>(new Map());
-  // Override reason modal
-  const [overrideImg, setOverrideImg] = useState<GeneratedImage | null>(null);
-  const [overrideReason, setOverrideReason] = useState("");
+  // Tier 2 toast — track which image IDs have already shown it this session
+  const shownToastIds = useRef<Set<string>>(new Set());
+  const [activeToastImgId, setActiveToastImgId] = useState<string | null>(null);
 
   async function generate(
     userPrompt: string,
@@ -111,14 +111,14 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
     }
   }
 
-  function placeOnCanvas(img: GeneratedImage) {
-    // Off-brand images require an override reason before placing
-    if (img.score?.label === "off-brand") {
-      setOverrideImg(img);
-      setOverrideReason("");
-      return;
-    }
-    commitPlace(img);
+  function placeImage(img: GeneratedImage) {
+    if (!img.score) { commitPlace(img); return; }
+    if (!img.score.dimensions.noProhibited) return; // Tier 3 — hard block
+    if (img.score.score >= 80) { commitPlace(img); return; } // Tier 1 — silent
+    // Tier 2 — soft toast, fires once per image per session
+    if (shownToastIds.current.has(img.id)) { commitPlace(img); return; }
+    shownToastIds.current.add(img.id);
+    setActiveToastImgId(img.id);
   }
 
   function commitPlace(img: GeneratedImage, reason?: string) {
@@ -350,15 +350,21 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
               <ImageCard
                 key={img.id}
                 image={img}
-                onPlace={() => placeOnCanvas(img)}
-                onPlaceDirect={() => commitPlace(img)}
-                onGetAlternative={() => generate(
-                  img.userPrompt,
-                  true,
-                  img.score?.failingDimension ?? null,
-                  img.score?.issues ?? undefined,
-                  img.score?.explanation ?? undefined
-                )}
+                isActiveToast={activeToastImgId === img.id}
+                onPlace={() => placeImage(img)}
+                onPlaceDirect={() => { setActiveToastImgId(null); commitPlace(img); }}
+                onGetAlternative={() => {
+                  setActiveToastImgId(null);
+                  generate(
+                    img.userPrompt,
+                    true,
+                    img.score?.failingDimension ?? null,
+                    img.score?.issues ?? undefined,
+                    img.score?.explanation ?? undefined
+                  );
+                }}
+                onRemove={() => setImages((prev) => prev.filter((x) => x.id !== img.id))}
+                onDismissToast={() => setActiveToastImgId(null)}
               />
             ))}
           </div>
@@ -391,122 +397,6 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         </button>
       </div>
 
-      {/* ── Off-brand override reason modal ── */}
-      {overrideImg && createPortal(
-        <div
-          onClick={() => setOverrideImg(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 10000,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--color-bg-primary)",
-              border: "1px solid var(--color-border-default)",
-              borderRadius: "var(--radius-lg)",
-              padding: "var(--space-5)",
-              width: 320,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-              fontFamily: "var(--font-sans)",
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-                background: "rgba(239,68,68,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-text-primary)" }}>
-                  Off-brand image
-                </p>
-                <p style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-muted)", lineHeight: "var(--leading-relaxed)" }}>
-                  This image scored below brand thresholds. Provide a reason to continue.
-                </p>
-              </div>
-            </div>
-
-            {/* Reason textarea */}
-            <textarea
-              autoFocus
-              value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
-              placeholder="e.g. Approved by brand team for campaign exception"
-              rows={3}
-              style={{
-                width: "100%",
-                fontSize: "var(--text-xs)",
-                fontFamily: "var(--font-sans)",
-                color: "var(--color-text-primary)",
-                background: "var(--color-bg-surface)",
-                border: "1px solid var(--color-border-default)",
-                borderRadius: "var(--radius-md)",
-                padding: "var(--space-2) var(--space-3)",
-                resize: "none",
-                outline: "none",
-                boxSizing: "border-box",
-                lineHeight: "var(--leading-relaxed)",
-                marginBottom: "var(--space-4)",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--canva-purple-400)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border-default)")}
-            />
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button
-                onClick={() => setOverrideImg(null)}
-                style={{
-                  flex: 1, padding: "7px 0",
-                  border: "1px solid var(--color-border-default)",
-                  borderRadius: "var(--radius-md)",
-                  background: "transparent",
-                  fontSize: "var(--text-xs)",
-                  fontWeight: "var(--weight-medium)",
-                  fontFamily: "var(--font-sans)",
-                  color: "var(--color-text-secondary)",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={!overrideReason.trim()}
-                onClick={() => {
-                  commitPlace(overrideImg, overrideReason.trim());
-                  setOverrideImg(null);
-                  setOverrideReason("");
-                }}
-                style={{
-                  flex: 1, padding: "7px 0",
-                  border: "none",
-                  borderRadius: "var(--radius-md)",
-                  background: overrideReason.trim() ? "#ef4444" : "var(--color-bg-subtle)",
-                  fontSize: "var(--text-xs)",
-                  fontWeight: "var(--weight-medium)",
-                  fontFamily: "var(--font-sans)",
-                  color: overrideReason.trim() ? "#fff" : "var(--color-text-muted)",
-                  cursor: overrideReason.trim() ? "pointer" : "default",
-                  transition: "background 0.15s, color 0.15s",
-                }}
-              >
-                Place anyway
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
@@ -705,14 +595,20 @@ const DIM_LABELS_SHORT: Record<string, string> = {
 
 function ImageCard({
   image,
+  isActiveToast,
   onPlace,
   onPlaceDirect,
   onGetAlternative,
+  onRemove,
+  onDismissToast,
 }: {
   image: GeneratedImage;
+  isActiveToast: boolean;
   onPlace: () => void;
   onPlaceDirect: () => void;
   onGetAlternative: () => void;
+  onRemove: () => void;
+  onDismissToast: () => void;
 }) {
   const score = image.score;
   const prohibited = score && !score.dimensions.noProhibited;
@@ -762,7 +658,7 @@ function ImageCard({
 
   return (
     <>
-    <div className="canva-card">
+    <div className="canva-card" style={{ position: "relative" }}>
       {/* Score breakdown tooltip — portaled to body, position: fixed */}
       {score && showTooltip && typeof document !== "undefined" && createPortal(
         <div
@@ -836,6 +732,46 @@ function ImageCard({
         </div>
       )}
 
+      {/* Tier 2 — soft toast overlay, centered over the card */}
+      {isActiveToast && (
+        <div style={{
+          position: "absolute", inset: 0,
+          borderRadius: "var(--radius-lg)",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(2px)",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          gap: "var(--space-2)",
+          padding: "var(--space-3)",
+          zIndex: 10,
+        }}>
+          <p style={{
+            margin: 0, fontSize: 10, fontWeight: "var(--weight-bold)",
+            color: "var(--color-text-primary)", textAlign: "center", lineHeight: 1.4,
+          }}>
+            Needs review before placing
+          </p>
+          <button
+            onClick={onGetAlternative}
+            className="btn-primary"
+            style={{ width: "100%", justifyContent: "center", fontSize: 10, padding: "5px 8px" }}
+          >
+            ✦ Get on-brand version
+          </button>
+          <button
+            onClick={onPlaceDirect}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 10, color: "var(--color-text-muted)",
+              fontFamily: "var(--font-sans)", padding: "2px 0",
+              textDecoration: "underline", textUnderlineOffset: 2,
+            }}
+          >
+            Place it anyway
+          </button>
+        </div>
+      )}
+
       {/* Actions */}
       <div style={{
         display: "flex",
@@ -844,33 +780,60 @@ function ImageCard({
         padding: "var(--space-1) var(--space-2) var(--space-2)",
         borderTop: "1px solid var(--color-border-subtle)",
       }}>
-        {(prohibited || (score && !isOnBrand)) ? (
+        {prohibited ? (
+          // Tier 3 — hard block, no placement path
           <>
             <button
               onClick={onGetAlternative}
               className="btn-ai"
               style={{
-                width: "100%",
-                justifyContent: "center",
-                fontSize: "var(--text-xs)",
-                padding: "6px 8px",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                minWidth: 0,
+                width: "100%", justifyContent: "center",
+                fontSize: "var(--text-xs)", padding: "6px 8px",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
               }}
-              title={prohibited ? "Re-generate avoiding prohibited elements" : `Improve ${failLabel}`}
+              title="Re-generate avoiding prohibited elements"
             >
               ✦ Improve
             </button>
             <button
-              onClick={onPlaceDirect}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%" }}
+              onClick={onRemove}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 10, color: "var(--color-text-muted)",
+                fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%",
+              }}
+            >
+              Start over
+            </button>
+          </>
+        ) : score && !isOnBrand ? (
+          // Tier 2 — low/needs-review: improve or place (toast shows on first attempt)
+          <>
+            <button
+              onClick={onGetAlternative}
+              className="btn-ai"
+              style={{
+                width: "100%", justifyContent: "center",
+                fontSize: "var(--text-xs)", padding: "6px 8px",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
+              }}
+              title={`Improve ${failLabel}`}
+            >
+              ✦ Improve
+            </button>
+            <button
+              onClick={onPlace}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 10, color: "var(--color-text-muted)",
+                fontFamily: "var(--font-sans)", padding: "2px 0", textAlign: "center", width: "100%",
+              }}
             >
               Use anyway
             </button>
           </>
         ) : (
+          // Tier 1 — on-brand or unscored: silent placement
           <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
             Use this image
           </button>
