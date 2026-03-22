@@ -849,10 +849,19 @@ function ImageCard({
             <button
               onClick={onGetAlternative}
               className="btn-ai"
-              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)", padding: "6px 8px" }}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                fontSize: "var(--text-xs)",
+                padding: "6px 8px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+              }}
               title={prohibited ? "Re-generate avoiding prohibited elements" : `Improve ${failLabel}`}
             >
-              ✦ Generate alternative
+              ✦ Improve
             </button>
             <button
               onClick={onPlaceDirect}
