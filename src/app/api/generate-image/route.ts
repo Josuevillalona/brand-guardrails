@@ -68,10 +68,11 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : "Internal error";
     const isRateLimit = message.includes("429") || message.toLowerCase().includes("throttled") || message.toLowerCase().includes("rate limit");
     if (isRateLimit) {
-      return NextResponse.json(
-        { error: "rate_limited" },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    }
+    const isOutOfCredits = message.includes("402") || message.toLowerCase().includes("insufficient credit") || message.toLowerCase().includes("payment required");
+    if (isOutOfCredits) {
+      return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }
