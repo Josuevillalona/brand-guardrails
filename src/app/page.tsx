@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { BrandSetupPanel } from "@/components/brand-setup/BrandSetupPanel";
-import { CanvasWorkspace } from "@/components/canvas/CanvasWorkspace";
+import { CanvasWorkspace, CanvasWorkspaceHandle } from "@/components/canvas/CanvasWorkspace";
 import type { AppPhase } from "@/types";
 
 const CAROUSEL_IMGS = Array.from({ length: 11 }, (_, i) => `/carousel/${i + 1}.png`);
@@ -120,7 +120,13 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
 }
 
 export default function Home() {
-  const { phase, brandKit, setShowBrandSetup, showBrandSetup } = useStore();
+  const { phase, brandKit, setShowBrandSetup, showBrandSetup, canvasElements } = useStore();
+  const workspaceRef = useRef<CanvasWorkspaceHandle>(null);
+  const isEmpty = canvasElements.length === 0;
+
+  function handleExport() {
+    workspaceRef.current?.exportCanvas();
+  }
 
   // Phase transition: fade out → swap → fade in
   const [displayedPhase, setDisplayedPhase] = useState<AppPhase>(phase);
@@ -177,12 +183,30 @@ export default function Home() {
         )}
 
         {phase === "canvas" && (
-          <button
-            onClick={() => setShowBrandSetup(true)}
-            className="canva-nav-btn"
-          >
-            {brandKit ? "Switch brand" : "Add brand kit"}
-          </button>
+          <>
+            <button
+              onClick={handleExport}
+              disabled={isEmpty}
+              className="canva-nav-btn"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                opacity: isEmpty ? 0.4 : 1,
+                cursor: isEmpty ? "default" : "pointer",
+                transition: "opacity 0.15s",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1v7M3.5 5.5l3 3 3-3M1.5 10h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Download
+            </button>
+            <button
+              onClick={() => setShowBrandSetup(true)}
+              className="canva-nav-btn"
+            >
+              {brandKit ? "Switch brand" : "Add brand kit"}
+            </button>
+          </>
         )}
       </nav>
 
@@ -203,7 +227,7 @@ export default function Home() {
           ) : displayedPhase === "brand-setup" ? (
             <BrandSetupPanel />
           ) : (
-            <CanvasWorkspace />
+            <CanvasWorkspace ref={workspaceRef} />
           )}
         </div>
 

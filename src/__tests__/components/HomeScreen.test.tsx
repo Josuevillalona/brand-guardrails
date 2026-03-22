@@ -15,6 +15,7 @@ jest.mock("@/store/useStore", () => {
     showBrandSetup: false,
     setShowBrandSetup: jest.fn(),
     setPhase,
+    canvasElements: [],
   };
   const useStore = (selector?: (s: typeof store) => unknown) =>
     selector ? selector(store) : store;

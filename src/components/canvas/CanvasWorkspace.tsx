@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
 import { useStore } from "@/store/useStore";
@@ -14,7 +14,11 @@ import { ScoreTooltipCard } from "@/components/scoring/ScoreTooltipCard";
 const CANVAS_W = 900;
 const CANVAS_H = 600;
 
-export function CanvasWorkspace() {
+export interface CanvasWorkspaceHandle {
+  exportCanvas: () => void;
+}
+
+export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function CanvasWorkspace(_, ref) {
   const {
     canvasElements,
     selectedElementId,
@@ -98,6 +102,8 @@ export function CanvasWorkspace() {
       setExporting(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({ exportCanvas }));
 
   // Drag tracking
   const drag = useRef<{
@@ -742,36 +748,6 @@ export function CanvasWorkspace() {
       {/* ── Canvas area ── */}
       <div className="canva-canvas-area canva-canvas-area-dots" style={{ position: "relative" }}>
 
-        {/* Export button — floats top-right of canvas area */}
-        {!isEmpty && (
-          <div style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}>
-            <button
-              onClick={exportCanvas}
-              disabled={exporting}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 14px",
-                background: "#fff",
-                border: "1px solid var(--color-border-default)",
-                borderRadius: "var(--radius-pill)",
-                cursor: exporting ? "default" : "pointer",
-                fontSize: "var(--text-xs)",
-                fontWeight: "var(--weight-medium)",
-                color: "var(--color-text-secondary)",
-                fontFamily: "var(--font-sans)",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                opacity: exporting ? 0.6 : 1,
-                transition: "opacity 0.15s",
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M6.5 1v7M3.5 5.5l3 3 3-3M1.5 10h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {exporting ? "Exporting…" : "Download"}
-            </button>
-          </div>
-        )}
-
         <div
           ref={canvasSurfaceRef}
           className="canva-canvas-surface"
@@ -1047,7 +1023,7 @@ export function CanvasWorkspace() {
 
     </div>
   );
-}
+});
 
 
 function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); }
