@@ -13,12 +13,14 @@ export async function POST(req: NextRequest) {
       count = 2,
       failingDimension = null,
       isAlternative = false,
+      imageMode = "hero",
     }: {
       userPrompt: string;
       brandKit: BrandKit | null;
       count?: number;
       failingDimension?: string | null;
       isAlternative?: boolean;
+      imageMode?: "hero" | "supporting" | "broll";
     } = await req.json();
 
     if (!userPrompt) {
@@ -29,11 +31,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Build the prompt — 7-block structured when Brand Kit present, raw prompt otherwise.
-    // Same FLUX model in both cases: the comparison isolates brand context, not model quality.
+    // imageMode shifts which blocks are enforced: hero=full, supporting=loosen colors, broll=atmosphere only.
     const assembledPrompt = brandKit
       ? isAlternative
-        ? buildAlternativePrompt(userPrompt, brandKit, failingDimension)
-        : buildStructuredBrandPrompt(userPrompt, brandKit)
+        ? buildAlternativePrompt(userPrompt, brandKit, failingDimension, imageMode)
+        : buildStructuredBrandPrompt(userPrompt, brandKit, imageMode)
       : userPrompt.trim();
 
     const imageCount = Math.min(Math.max(1, count), 2);

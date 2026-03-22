@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "@/store/useStore";
 import { TextElement, ImageElement } from "@/types";
 import { CanvasTextBlock } from "./CanvasTextBlock";
@@ -21,6 +22,7 @@ export function CanvasWorkspace() {
     removeElement,
     addTextElement,
     brandKit,
+    updateBrandKit,
     setShowBrandSetup,
   } = useStore();
 
@@ -28,6 +30,25 @@ export function CanvasWorkspace() {
   const [showBrand, setShowBrand] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [panelWidth, setPanelWidth] = useState(340);
+  const [editingBrand, setEditingBrand] = useState(false);
+  const [newProhibited, setNewProhibited] = useState("");
+  const [colorPickerIdx, setColorPickerIdx] = useState<number | null>(null);
+  const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const [draftHex, setDraftHex] = useState("");
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close color picker on outside click
+  useEffect(() => {
+    if (colorPickerIdx === null) return;
+    function onDown(e: MouseEvent) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerIdx(null);
+        setColorPickerPos(null);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [colorPickerIdx]);
 
   function openGenerator() { setShowGenerator(true); setShowBrand(false); setShowLayers(false); }
   function openBrand()     { setShowBrand(true); setShowGenerator(false); setShowLayers(false); }
@@ -284,17 +305,21 @@ export function CanvasWorkspace() {
             </p>
             {brandKit && (
               <button
-                onClick={() => setShowBrandSetup(true)}
+                onClick={() => setEditingBrand(e => !e)}
                 style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  fontSize: "var(--text-xs)", color: "var(--canva-purple-500)",
-                  fontFamily: "var(--font-sans)", fontWeight: "var(--weight-medium)",
-                  padding: 0, transition: "color var(--transition-fast)",
+                  background: editingBrand ? "var(--canva-purple-500)" : "none",
+                  border: editingBrand ? "none" : "none",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  fontSize: "var(--text-xs)",
+                  color: editingBrand ? "#fff" : "var(--canva-purple-500)",
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: "var(--weight-medium)",
+                  padding: editingBrand ? "2px 8px" : 0,
+                  transition: "all var(--transition-fast)",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--canva-purple-600)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--canva-purple-500)")}
               >
-                Edit
+                {editingBrand ? "Done" : "Edit"}
               </button>
             )}
           </div>
@@ -329,23 +354,45 @@ export function CanvasWorkspace() {
 
               {/* ── Colours ── */}
               <BrandSection label="Colours">
-                {/* Continuous palette strip */}
-                <div style={{ display: "flex", borderRadius: "var(--radius-sm)", overflow: "hidden", height: 40, marginBottom: "var(--space-3)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                <p style={{ margin: "0 0 var(--space-2)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Colour palette</p>
+                {/* Canva-style: large tall rectangular blocks side by side, rounded container */}
+                <div style={{ display: "flex", gap: 3, marginBottom: "var(--space-3)" }}>
                   {brandKit.colors.map((c, i) => (
-                    <div key={i} title={c.hex} style={{ flex: 1, background: c.hex }} />
+                    <div
+                      key={i}
+                      title={c.hex}
+                      onClick={(e) => {
+                        if (!editingBrand) return;
+                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setColorPickerIdx(i);
+                        setDraftHex(c.hex);
+                        setColorPickerPos({ x: r.left, y: r.bottom + 6 });
+                      }}
+                      style={{
+                        flex: 1, height: 56,
+                        background: c.hex,
+                        borderRadius: i === 0 ? "6px 0 0 6px" : i === brandKit.colors.length - 1 ? "0 6px 6px 0" : 0,
+                        position: "relative",
+                        cursor: editingBrand ? "pointer" : "default",
+                        transition: "filter 0.15s",
+                      }}
+                      onMouseEnter={e => editingBrand && ((e.currentTarget as HTMLDivElement).style.filter = "brightness(0.88)")}
+                      onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.filter = "none")}
+                    >
+                      {editingBrand && brandKit.colors.length > 1 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); updateBrandKit({ colors: brandKit.colors.filter((_, ci) => ci !== i) }); }}
+                          style={{ position: "absolute", top: -5, right: -5, width: 15, height: 15, borderRadius: "50%", background: "#1a1a1a", border: "1.5px solid white", color: "#fff", fontSize: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", lineHeight: 1, zIndex: 1 }}
+                        >×</button>
+                      )}
+                    </div>
                   ))}
                 </div>
-                {/* Hex grid — square swatches + hex only */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(52px, 1fr))", gap: "var(--space-2)" }}>
+                {/* Hex labels below each block */}
+                <div style={{ display: "flex", gap: 3 }}>
                   {brandKit.colors.map((c, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{
-                        width: "100%", aspectRatio: "1",
-                        background: c.hex,
-                        borderRadius: "var(--radius-sm)",
-                        border: "1px solid rgba(0,0,0,0.08)",
-                      }} />
-                      <span style={{ fontSize: 9, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.02em", textAlign: "center" }}>
+                    <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                      <span style={{ fontSize: 9, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.02em" }}>
                         {c.hex.toUpperCase()}
                       </span>
                     </div>
@@ -355,56 +402,106 @@ export function CanvasWorkspace() {
 
               {/* ── Visual Style ── */}
               <BrandSection label="Visual Style">
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-                  {([
-                    ["Render",   fmtStr(brandKit.renderStyle)],
-                    ["Mood",     fmtArr(brandKit.moodAdjectives)],
-                    ["Lighting", fmtStr(brandKit.lightingStyle)],
-                    ["Shot",     fmtStr(brandKit.shotType)],
-                  ] as [string, string][]).filter(([, v]) => v).map(([label, value]) => (
-                    <div key={label} style={{
-                      background: "var(--canva-gray-50)",
-                      borderRadius: "var(--radius-sm)",
-                      padding: "var(--space-2) var(--space-3)",
-                    }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 9, fontWeight: "var(--weight-bold)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        {label}
-                      </p>
-                      <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-primary)", lineHeight: "var(--leading-normal)", wordBreak: "break-word" }}>
+                {([
+                  ["Render style", fmtStr(brandKit.renderStyle),    "renderStyle"],
+                  ["Mood",         fmtArr(brandKit.moodAdjectives), "moodAdjectives"],
+                  ["Lighting",     fmtStr(brandKit.lightingStyle),  "lightingStyle"],
+                  ["Shot type",    fmtStr(brandKit.shotType),       "shotType"],
+                ] as [string, string, keyof typeof brandKit][]).filter(([, v]) => v).map(([label, value, field], idx, arr) => (
+                  <div key={label} style={{
+                    display: "flex", alignItems: "baseline", gap: "var(--space-3)",
+                    padding: "var(--space-2) 0",
+                    borderBottom: idx < arr.length - 1 ? "1px solid var(--color-border-subtle)" : "none",
+                  }}>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", flexShrink: 0, width: 72 }}>
+                      {label}
+                    </span>
+                    {editingBrand ? (
+                      <input
+                        defaultValue={value}
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          if (field === "moodAdjectives") {
+                            updateBrandKit({ moodAdjectives: raw.split(",").map(s => s.trim()).filter(Boolean) });
+                          } else {
+                            updateBrandKit({ [field]: raw } as Partial<typeof brandKit>);
+                          }
+                        }}
+                        style={{ flex: 1, fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)", color: "var(--color-text-primary)", border: "none", borderBottom: "1px solid var(--canva-purple-300)", background: "transparent", outline: "none", fontFamily: "var(--font-sans)", padding: "1px 0" }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)", color: "var(--color-text-primary)", lineHeight: "var(--leading-normal)" }}>
                         {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                      </span>
+                    )}
+                  </div>
+                ))}
               </BrandSection>
 
               {/* ── Brand Voice ── */}
-              {brandKit.voiceSummary && (
+              {(brandKit.voiceSummary || editingBrand) && (
                 <BrandSection label="Brand voice">
-                  <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-relaxed)" }}>
-                    {brandKit.voiceSummary}
-                  </p>
+                  {editingBrand ? (
+                    <textarea
+                      defaultValue={brandKit.voiceSummary}
+                      rows={4}
+                      onBlur={(e) => updateBrandKit({ voiceSummary: e.target.value.trim() })}
+                      style={{ width: "100%", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-relaxed)", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", padding: "var(--space-2) var(--space-3)", fontFamily: "var(--font-sans)", resize: "vertical", background: "transparent", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+                      onFocus={e => (e.currentTarget.style.borderColor = "var(--canva-purple-400)")}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", lineHeight: 1.7, borderLeft: "2px solid var(--canva-purple-200)", paddingLeft: "var(--space-3)", fontStyle: "italic" }}>
+                      {brandKit.voiceSummary}
+                    </p>
+                  )}
                 </BrandSection>
               )}
 
               {/* ── Prohibited ── */}
-              {brandKit.prohibitedElements?.length > 0 && (
+              {(brandKit.prohibitedElements?.length > 0 || editingBrand) && (
                 <BrandSection label="Prohibited" labelColor="var(--color-score-off-brand)">
-                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-1)" }}>
                     {(Array.isArray(brandKit.prohibitedElements)
                       ? brandKit.prohibitedElements
                       : String(brandKit.prohibitedElements).split(",")
                     ).map((item, i) => (
-                      <div key={i} style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start" }}>
-                        <span style={{ color: "var(--color-score-off-brand)", flexShrink: 0, marginTop: 1 }}>⊘</span>
-                        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-normal)" }}>
-                          {capitalize(item.trim())}
-                        </span>
-                      </div>
+                      <span key={i} style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        padding: "3px 8px",
+                        background: "var(--color-score-off-bg)",
+                        border: "1px solid var(--color-score-off-border)",
+                        borderRadius: 99,
+                        fontSize: "var(--text-xs)",
+                        color: "var(--color-score-off-brand)",
+                        lineHeight: 1.4,
+                      }}>
+                        {capitalize(item.trim())}
+                        {editingBrand && (
+                          <button
+                            onClick={() => updateBrandKit({ prohibitedElements: brandKit.prohibitedElements.filter((_, pi) => pi !== i) })}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-score-off-brand)", fontSize: 12, lineHeight: 1, padding: 0, opacity: 0.7, display: "flex", alignItems: "center" }}
+                          >×</button>
+                        )}
+                      </span>
                     ))}
+                    {editingBrand && (
+                      <input
+                        value={newProhibited}
+                        onChange={(e) => setNewProhibited(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newProhibited.trim()) {
+                            updateBrandKit({ prohibitedElements: [...brandKit.prohibitedElements, newProhibited.trim()] });
+                            setNewProhibited("");
+                          }
+                        }}
+                        placeholder="+ Add item"
+                        style={{ fontSize: "var(--text-xs)", border: "1px dashed var(--color-border-default)", borderRadius: 99, padding: "3px 10px", fontFamily: "var(--font-sans)", outline: "none", color: "var(--color-text-muted)", background: "transparent", width: 90 }}
+                      />
+                    )}
                   </div>
                 </BrandSection>
               )}
+
 
             </div>
           ) : (
@@ -469,6 +566,84 @@ export function CanvasWorkspace() {
             ))}
           </div>
         </div>
+
+        {/* ── Color picker portal ── */}
+        {colorPickerIdx !== null && colorPickerPos && brandKit && typeof document !== "undefined" && createPortal(
+          <div
+            ref={colorPickerRef}
+            style={{
+              position: "fixed",
+              top: colorPickerPos.y,
+              left: colorPickerPos.x,
+              zIndex: 9999,
+              background: "#fff",
+              borderRadius: 12,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)",
+              padding: 16,
+              width: 200,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              border: "1px solid var(--color-border-default)",
+            }}
+          >
+            {/* Large color preview + native picker */}
+            <div style={{ position: "relative", width: "100%", height: 80, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.08)", background: draftHex }}>
+              <input
+                type="color"
+                value={draftHex.startsWith("#") && draftHex.length === 7 ? draftHex : "#000000"}
+                onChange={(e) => setDraftHex(e.target.value)}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "crosshair" }}
+              />
+              <div style={{ position: "absolute", bottom: 6, right: 6, fontSize: 10, color: "white", background: "rgba(0,0,0,0.4)", padding: "2px 6px", borderRadius: 4, pointerEvents: "none", fontFamily: "var(--font-mono)" }}>
+                click to pick
+              </div>
+            </div>
+
+            {/* Hex input */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--color-border-default)", borderRadius: 6, padding: "6px 10px", background: "var(--canva-gray-50)" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>#</span>
+              <input
+                value={draftHex.replace(/^#/, "")}
+                onChange={(e) => {
+                  const val = "#" + e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                  setDraftHex(val);
+                }}
+                maxLength={6}
+                placeholder="000000"
+                style={{ flex: 1, border: "none", background: "transparent", fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", outline: "none", letterSpacing: "0.05em" }}
+              />
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { setColorPickerIdx(null); setColorPickerPos(null); }}
+                style={{ flex: 1, padding: "6px 0", border: "1px solid var(--color-border-default)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--color-text-secondary)", fontFamily: "var(--font-sans)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const hex = draftHex.length === 7 ? draftHex : draftHex.length === 4 ? draftHex : null;
+                  if (hex && colorPickerIdx !== null) {
+                    const updated = brandKit.colors.map((c, i) =>
+                      i === colorPickerIdx ? { ...c, hex } : c
+                    );
+                    updateBrandKit({ colors: updated });
+                  }
+                  setColorPickerIdx(null);
+                  setColorPickerPos(null);
+                }}
+                style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: 6, background: "var(--canva-purple-500)", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 600, fontFamily: "var(--font-sans)" }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
         </>
       )}
 

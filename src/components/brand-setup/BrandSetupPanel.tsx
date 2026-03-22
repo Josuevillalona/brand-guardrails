@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { BrandKitReveal } from "./BrandKitReveal";
 
@@ -20,14 +20,18 @@ interface BrandSetupPanelProps {
 }
 
 export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelProps) {
-  const [url, setUrl] = useState("");
-  const [loadingStep, setLoadingStep] = useState(0); // 1-3 active, +0.5 = complete
-  const [revealedCount, setRevealedCount] = useState(0);
-
   const {
     brandKit, brandExtracting, brandError,
     setBrandKit, setBrandExtracting, setBrandError, setPhase,
   } = useStore();
+
+  const [url, setUrl] = useState("");
+  const [loadingStep, setLoadingStep] = useState(0); // 1-3 active, +0.5 = complete
+  // If brand kit already exists when this component mounts (modal re-open), show fully revealed immediately
+  const [revealedCount, setRevealedCount] = useState(() =>
+    brandKit ? 1 + brandKit.colors.length + 4 : 0
+  );
+  const revealStartedRef = useRef(!!brandKit); // skip reveal animation if kit already present
 
   // Advance loading status lines while extracting
   useEffect(() => {
@@ -39,9 +43,14 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
     return () => timers.forEach(clearTimeout);
   }, [brandExtracting]);
 
-  // Trigger staggered reveal after brandKit arrives
+  // Trigger staggered reveal after brandKit first arrives — not on every edit update
   useEffect(() => {
-    if (!brandKit) return;
+    if (!brandKit) {
+      revealStartedRef.current = false;
+      return;
+    }
+    if (revealStartedRef.current) return;
+    revealStartedRef.current = true;
     setRevealedCount(0);
     // How many reveal units: 1 (name) + N colors + 3 (visual style, voice, confirm)
     const totalSteps = 1 + brandKit.colors.length + 3;
@@ -79,6 +88,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
     useStore.getState().clearBrandKit();
     setRevealedCount(0);
     setLoadingStep(0);
+    revealStartedRef.current = false;
   }
 
   const colorCount = brandKit?.colors.length ?? 0;

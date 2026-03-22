@@ -16,10 +16,10 @@ interface Props {
 
 let imgSeq = 0;
 
-const IMAGE_MODES: { value: ImageMode; label: string; description: string }[] = [
-  { value: "hero",       label: "Hero",       description: "Campaign & key brand imagery — full enforcement" },
-  { value: "supporting", label: "Supporting",  description: "Food, lifestyle, objects — aesthetic fit, natural subject colors" },
-  { value: "broll",      label: "B-roll",      description: "Texture, detail, abstract — mood & atmosphere only" },
+const IMAGE_MODES: { value: ImageMode; label: string; tooltip: string }[] = [
+  { value: "hero",       label: "Hero",       tooltip: "Strict brand enforcement. Color, style, and composition scored to full brand standards." },
+  { value: "supporting", label: "Supporting", tooltip: "Balanced enforcement. Subject colors stay natural; brand signals apply to environment and atmosphere." },
+  { value: "broll",      label: "B-roll",     tooltip: "Aesthetic feel only. Texture, mood, and lighting scored; composition and palette are flexible." },
 ];
 
 export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
@@ -30,6 +30,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const [generating, setGenerating] = useState(false);
   const [generatingAlt, setGeneratingAlt] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [hoveredMode, setHoveredMode] = useState<ImageMode | null>(null);
+  const [modeTooltipPos, setModeTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const modeHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Maps generated image id → canvas element id (set when user places image before scoring finishes)
   const placedCanvasIds = useRef<Map<string, string>>(new Map());
 
@@ -47,7 +50,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPrompt, brandKit, count: 2, isAlternative, failingDimension }),
+        body: JSON.stringify({ userPrompt, brandKit, count: 2, isAlternative, failingDimension, imageMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -168,14 +171,23 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           }}>
             {brandKit.companyName}
           </span>
-          <span className="canva-pill" style={{
-            background: "var(--canva-purple-50)",
-            border: "1px solid var(--canva-purple-200)",
-            color: "var(--canva-purple-600)",
-            fontSize: "var(--text-xs)",
-          }}>
-            active
-          </span>
+          <button
+            onClick={() => setShowBrandSetup(true)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontSize: "var(--text-xs)",
+              color: "var(--canva-purple-500)",
+              fontFamily: "var(--font-sans)",
+              fontWeight: "var(--weight-medium)",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            Change
+          </button>
         </div>
       )}
 
@@ -330,31 +342,74 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           <div style={{
             display: "flex",
             borderRadius: "var(--radius-md)",
-            overflow: "hidden",
             border: "1px solid var(--color-border-default)",
           }}>
-            {IMAGE_MODES.map((mode, i) => (
-              <button
-                key={mode.value}
-                onClick={() => setImageMode(mode.value)}
-                title={mode.description}
-                style={{
-                  flex: 1,
-                  padding: "var(--space-1) var(--space-1)",
-                  border: "none",
-                  borderLeft: i > 0 ? `1px solid var(--color-border-default)` : "none",
-                  background: imageMode === mode.value ? "var(--canva-purple-500)" : "transparent",
-                  color: imageMode === mode.value ? "var(--color-text-on-accent)" : "var(--color-text-secondary)",
-                  fontSize: "var(--text-xs)",
-                  fontWeight: "var(--weight-medium)",
-                  fontFamily: "var(--font-sans)",
-                  cursor: "pointer",
-                  transition: "background var(--transition-fast), color var(--transition-fast)",
-                }}
-              >
-                {mode.label}
-              </button>
-            ))}
+            {IMAGE_MODES.map((mode, i) => {
+              const isSelected = imageMode === mode.value;
+              const isFirst = i === 0;
+              const isLast = i === IMAGE_MODES.length - 1;
+              const showTooltip = hoveredMode === mode.value;
+              return (
+                <button
+                  key={mode.value}
+                  onClick={() => setImageMode(mode.value)}
+                  style={{
+                    position: "relative",
+                    flex: 1,
+                    padding: "var(--space-1) var(--space-1)",
+                    border: "none",
+                    borderLeft: i > 0 ? `1px solid var(--color-border-default)` : "none",
+                    borderRadius: isFirst
+                      ? "calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px)"
+                      : isLast
+                      ? "0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0"
+                      : 0,
+                    background: isSelected ? "var(--canva-purple-500)" : "transparent",
+                    color: isSelected ? "var(--color-text-on-accent)" : "var(--color-text-secondary)",
+                    fontSize: "var(--text-xs)",
+                    fontWeight: "var(--weight-medium)",
+                    fontFamily: "var(--font-sans)",
+                    cursor: "pointer",
+                    transition: "background var(--transition-fast), color var(--transition-fast)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 3,
+                  }}
+                >
+                  {mode.label}
+                  {/* ⓘ icon with portaled tooltip */}
+                  <span
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                      if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      modeHoverTimer.current = setTimeout(() => {
+                        setModeTooltipPos({ x: r.left + r.width / 2, y: r.top });
+                        setHoveredMode(mode.value);
+                      }, 300);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.stopPropagation();
+                      if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                      setHoveredMode(null);
+                      setModeTooltipPos(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: 11,
+                      lineHeight: 1,
+                      color: isSelected ? "rgba(255,255,255,0.7)" : "#a0a0a0",
+                      marginLeft: 1,
+                      cursor: "default",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ⓘ
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -387,6 +442,32 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           ← Go back
         </button>
       </div>
+
+      {/* Mode tooltip — portaled to body so it escapes sidebar overflow/clipping */}
+      {hoveredMode && modeTooltipPos && typeof document !== "undefined" && createPortal(
+        <div style={{
+          position: "fixed",
+          left: modeTooltipPos.x,
+          top: modeTooltipPos.y - 8,
+          transform: "translate(-50%, -100%)",
+          background: "var(--color-text-primary)",
+          color: "#fff",
+          fontSize: 11,
+          lineHeight: 1.5,
+          padding: "6px 10px",
+          borderRadius: 6,
+          width: 200,
+          pointerEvents: "none",
+          zIndex: 9999,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.22)",
+          textAlign: "left",
+          fontFamily: "var(--font-sans)",
+          fontWeight: 400,
+        }}>
+          {IMAGE_MODES.find(m => m.value === hoveredMode)?.tooltip}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

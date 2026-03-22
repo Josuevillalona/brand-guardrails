@@ -116,4 +116,4 @@ export interface GeneratedImage {
 
 // ─── App state ────────────────────────────────────────────────────────────────
 
-export type AppPhase = "brand-setup" | "canvas";
+export type AppPhase = "home" | "brand-setup" | "canvas";

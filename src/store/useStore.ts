@@ -52,7 +52,7 @@ const uid = () => `el-${Date.now()}-${nextId++}`;
 
 export const useStore = create<AppStore>((set, get) => ({
   // ── Phase ──────────────────────────────────────────────────────────────────
-  phase: "brand-setup",
+  phase: "home",
   setPhase: (phase) => set({ phase }),
 
   // ── Brand Kit ──────────────────────────────────────────────────────────────

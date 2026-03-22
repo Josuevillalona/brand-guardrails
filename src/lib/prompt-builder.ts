@@ -1,4 +1,5 @@
 import { BrandKit } from "@/types";
+import { ImageMode } from "@/lib/image-scorer";
 
 // Universal quality exclusions — fire on every call regardless of brand rules
 const UNIVERSAL_NEGATIVE = [
@@ -15,63 +16,82 @@ const UNIVERSAL_NEGATIVE = [
  * Assembles a 7-block structured prompt in canonical order:
  * Subject → Style base → Color direction → Lighting → Composition → Mood → Negative block
  *
- * Full 18-field Brand Kit integrated:
- * - Block 2: renderStyle + depthOfField + cameraAngle + typographyPersonality aesthetic
- * - Block 3: colors + colorTemperature + colorSaturation + colorGrade
- * - Block 5: shotType + negativeSpace + environmentalContext + aspectRatioConvention
+ * Blocks adapt per imageMode:
+ * - hero:       full enforcement — palette, composition, shot type, all signals
+ * - supporting: loosen color palette (subject has natural colors); keep render/mood/lighting
+ * - broll:      drop shot type / composition specifics; focus on texture, atmosphere, mood
  *
  * Color direction uses descriptive names, NOT hex values.
  * The negative block is mandatory and always fires.
  */
 export function buildStructuredBrandPrompt(
   userPrompt: string,
-  brandKit: BrandKit
+  brandKit: BrandKit,
+  imageMode: ImageMode = "hero"
 ): string {
   // Block 1 — Subject (user's plain-language prompt, unchanged)
   const block1 = userPrompt.trim();
 
-  // Block 2 — Style base
-  // Uses photography-specific language instead of "professional quality, high detail"
-  // which is a known DALL-E over-render trigger
+  // Block 2 — Style base (all modes: render style is the primary brand carrier)
   const block2 = [
     `${brandKit.renderStyle} style`,
     brandKit.depthOfField,
-    `${brandKit.cameraAngle} camera angle`,
+    imageMode !== "broll" ? `${brandKit.cameraAngle} camera angle` : null,
     `${brandKit.typographyPersonality} aesthetic`,
-  ].join(", ");
+  ].filter(Boolean).join(", ");
 
-  // Block 3 — Color direction
-  // Scoped to environment, background, and accent elements — NOT the subject itself.
-  // This prevents DALL-E applying brand palette to subject matter (e.g. charcoal-colored avocados).
+  // Block 3 — Color direction (mode-adaptive)
   const colorNames = brandKit.colors
     .map((c) => c.descriptiveName)
     .slice(0, 4)
     .join(", ");
-  const block3 = [
-    `background and environmental tones: ${colorNames}`,
-    `${brandKit.colorTemperature} color temperature`,
-    `${brandKit.colorSaturation} saturation`,
-    brandKit.colorGrade,
-    `subject rendered with natural authentic colors`,
-  ].join(", ");
 
-  // Block 4 — Lighting
-  const block4 = `${brandKit.lightingStyle}, ${brandKit.lightingTemperature} lighting`;
+  const block3 = imageMode === "hero"
+    // Hero: strict palette enforcement across background, environment, and accents
+    ? [
+        `background and environmental tones: ${colorNames}`,
+        `${brandKit.colorTemperature} color temperature`,
+        `${brandKit.colorSaturation} saturation`,
+        brandKit.colorGrade,
+        `subject rendered with natural authentic colors`,
+      ].join(", ")
+    : imageMode === "supporting"
+    // Supporting: ambient palette only — subject (food, objects, people) keeps natural colors
+    ? [
+        `ambient environment and background tones informed by ${colorNames}`,
+        `${brandKit.colorTemperature} color temperature`,
+        brandKit.colorGrade,
+        `foreground subject colors must be natural and realistic, not tinted`,
+      ].join(", ")
+    // B-roll: overall color feel and grade only — no palette enforcement
+    : [
+        `${brandKit.colorTemperature} color temperature`,
+        `${brandKit.colorSaturation} saturation`,
+        brandKit.colorGrade,
+      ].join(", ");
 
-  // Block 5 — Composition (shot type + negative space + environment + aspect ratio)
-  const block5 = [
-    `${brandKit.shotType} shot`,
-    `${brandKit.negativeSpace} negative space`,
-    brandKit.environmentalContext,
-    `${brandKit.aspectRatioConvention} composition`,
-  ].join(", ");
+  // Block 4 — Lighting (all modes, but b-roll emphasises atmosphere)
+  const block4 = imageMode === "broll"
+    ? `${brandKit.lightingStyle}, ${brandKit.lightingTemperature} lighting, emphasise texture and atmospheric depth`
+    : `${brandKit.lightingStyle}, ${brandKit.lightingTemperature} lighting`;
 
-  // Block 6 — Mood
+  // Block 5 — Composition (hero/supporting enforce shot type; b-roll focuses on texture/detail)
+  const block5 = imageMode === "broll"
+    ? `close-up texture and detail, ${brandKit.environmentalContext}, abstract or macro composition`
+    : [
+        `${brandKit.shotType} shot`,
+        `${brandKit.negativeSpace} negative space`,
+        brandKit.environmentalContext,
+        `${brandKit.aspectRatioConvention} composition`,
+      ].join(", ");
+
+  // Block 6 — Mood (all modes; b-roll elevates this as its primary brand signal)
   const moodStr = brandKit.moodAdjectives.slice(0, 3).join(", ");
-  const block6 = `${moodStr} mood and atmosphere`;
+  const block6 = imageMode === "broll"
+    ? `strong ${moodStr} mood, atmospheric and evocative`
+    : `${moodStr} mood and atmosphere`;
 
-  // Block 7 — Negative block (brand-specific + universal)
-  // DALL-E 3 uses natural language — no Midjourney-style --no syntax
+  // Block 7 — Negative block (brand-specific + universal, always fires)
   const brandNegatives = brandKit.prohibitedElements.length > 0
     ? brandKit.prohibitedElements
     : [];
@@ -112,9 +132,10 @@ export function getBrandPromptBlocks(
 export function buildAlternativePrompt(
   userPrompt: string,
   brandKit: BrandKit,
-  failingDimension: string | null
+  failingDimension: string | null,
+  imageMode: ImageMode = "hero"
 ): string {
-  const base = buildStructuredBrandPrompt(userPrompt, brandKit);
+  const base = buildStructuredBrandPrompt(userPrompt, brandKit, imageMode);
 
   if (!failingDimension) return base;
 
