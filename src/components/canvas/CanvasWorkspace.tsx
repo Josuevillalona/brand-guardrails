@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import html2canvas from "html2canvas";
 import { createPortal } from "react-dom";
 import { useStore } from "@/store/useStore";
 import { TextElement, ImageElement } from "@/types";
@@ -76,6 +77,27 @@ export function CanvasWorkspace() {
   }
 
   const DRAG_THRESHOLD = 4; // px before a mousedown becomes a drag
+
+  const canvasSurfaceRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function exportCanvas() {
+    if (!canvasSurfaceRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(canvasSurfaceRef.current, {
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        scale: 2,
+      });
+      const link = document.createElement("a");
+      link.download = "brand-guardrails-canvas.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // Drag tracking
   const drag = useRef<{
@@ -718,8 +740,40 @@ export function CanvasWorkspace() {
       )}
 
       {/* ── Canvas area ── */}
-      <div className="canva-canvas-area canva-canvas-area-dots">
+      <div className="canva-canvas-area canva-canvas-area-dots" style={{ position: "relative" }}>
+
+        {/* Export button — floats top-right of canvas area */}
+        {!isEmpty && (
+          <div style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}>
+            <button
+              onClick={exportCanvas}
+              disabled={exporting}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px",
+                background: "#fff",
+                border: "1px solid var(--color-border-default)",
+                borderRadius: "var(--radius-pill)",
+                cursor: exporting ? "default" : "pointer",
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--weight-medium)",
+                color: "var(--color-text-secondary)",
+                fontFamily: "var(--font-sans)",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                opacity: exporting ? 0.6 : 1,
+                transition: "opacity 0.15s",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1v7M3.5 5.5l3 3 3-3M1.5 10h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {exporting ? "Exporting…" : "Download"}
+            </button>
+          </div>
+        )}
+
         <div
+          ref={canvasSurfaceRef}
           className="canva-canvas-surface"
           style={{ width: CANVAS_W, height: CANVAS_H, position: "relative", userSelect: "none" }}
           onClick={() => selectElement(null)}

@@ -6,18 +6,19 @@ import { BrandKit } from "@/types";
 const mockBrandKit: BrandKit = {
   companyName: "Acme Corp",
   url: "https://acme.com",
+  voiceSummary: "Bold and confident tone.",
   colors: [
     { hex: "#1A2B3C", descriptiveName: "Deep Navy", role: "primary" },
     { hex: "#F5E6D3", descriptiveName: "Warm Sand", role: "secondary" },
   ],
   colorTemperature: "warm",
-  colorSaturation: "medium",
+  colorSaturation: "muted",
   renderStyle: "photorealistic",
   moodAdjectives: ["bold", "clean", "modern"],
   lightingStyle: "natural soft",
   lightingTemperature: "warm",
   shotType: "wide",
-  negativeSpace: "generous",
+  negativeSpace: "airy",
   depthOfField: "shallow",
   cameraAngle: "eye-level",
   colorGrade: "filmic",
@@ -62,9 +63,9 @@ describe("BrandKitReveal", () => {
     expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyName: "New Corp" }));
   });
 
-  it("renders color descriptive names", () => {
+  it("renders color swatches with hex as title", () => {
     const onUpdate = jest.fn();
-    render(
+    const { container } = render(
       <BrandKitReveal
         brandKit={mockBrandKit}
         revealedCount={FULL_REVEAL}
@@ -73,13 +74,15 @@ describe("BrandKitReveal", () => {
         onUpdate={onUpdate}
       />
     );
-    expect(screen.getByDisplayValue("Deep Navy")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Warm Sand")).toBeInTheDocument();
+    const swatches = container.querySelectorAll("button[title]");
+    const titles = Array.from(swatches).map((b) => b.getAttribute("title"));
+    expect(titles).toContain("#1A2B3C");
+    expect(titles).toContain("#F5E6D3");
   });
 
-  it("calls onUpdate when color name is changed", () => {
+  it("opens color picker when swatch is clicked", () => {
     const onUpdate = jest.fn();
-    render(
+    const { container } = render(
       <BrandKitReveal
         brandKit={mockBrandKit}
         revealedCount={FULL_REVEAL}
@@ -88,16 +91,10 @@ describe("BrandKitReveal", () => {
         onUpdate={onUpdate}
       />
     );
-    const input = screen.getByDisplayValue("Deep Navy");
-    fireEvent.change(input, { target: { value: "Midnight Blue" } });
-    fireEvent.blur(input);
-    expect(onUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        colors: expect.arrayContaining([
-          expect.objectContaining({ descriptiveName: "Midnight Blue" }),
-        ]),
-      })
-    );
+    const firstSwatch = container.querySelector("button[title='#1A2B3C']")!;
+    fireEvent.click(firstSwatch);
+    // Color picker portal opens — verify an Apply button appears
+    expect(screen.getByText("Apply")).toBeInTheDocument();
   });
 
   it("renders prohibited elements as pills", () => {
