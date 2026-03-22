@@ -68,6 +68,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
     setBrandExtracting(true);
     setBrandError(null);
     setRevealedCount(0);
+    revealStartedRef.current = false; // reset so reveal fires for the new kit
     try {
       const res = await fetch("/api/extract-brand", {
         method: "POST",

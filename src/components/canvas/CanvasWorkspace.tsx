@@ -424,23 +424,39 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
               Brand Kit
             </p>
             {brandKit && (
-              <button
-                onClick={() => setEditingBrand(e => !e)}
-                style={{
-                  background: editingBrand ? "var(--canva-purple-500)" : "none",
-                  border: editingBrand ? "none" : "none",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  fontSize: "var(--text-xs)",
-                  color: editingBrand ? "#fff" : "var(--canva-purple-500)",
-                  fontFamily: "var(--font-sans)",
-                  fontWeight: "var(--weight-medium)",
-                  padding: editingBrand ? "2px 8px" : 0,
-                  transition: "all var(--transition-fast)",
-                }}
-              >
-                {editingBrand ? "Done" : "Edit"}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                <button
+                  onClick={() => setShowBrandSetup(true)}
+                  style={{
+                    background: "none", border: "none",
+                    cursor: "pointer", fontSize: "var(--text-xs)",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-sans)", fontWeight: "var(--weight-medium)",
+                    padding: 0, transition: "color var(--transition-fast)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--canva-purple-500)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+                >
+                  Switch
+                </button>
+                <button
+                  onClick={() => setEditingBrand(e => !e)}
+                  style={{
+                    background: editingBrand ? "var(--canva-purple-500)" : "none",
+                    border: "none",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                    fontSize: "var(--text-xs)",
+                    color: editingBrand ? "#fff" : "var(--canva-purple-500)",
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: "var(--weight-medium)",
+                    padding: editingBrand ? "2px 8px" : 0,
+                    transition: "all var(--transition-fast)",
+                  }}
+                >
+                  {editingBrand ? "Done" : "Edit"}
+                </button>
+              </div>
             )}
           </div>
 
