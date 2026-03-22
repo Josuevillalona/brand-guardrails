@@ -200,12 +200,6 @@ export default function Home() {
               </svg>
               Download
             </button>
-            <button
-              onClick={() => setShowBrandSetup(true)}
-              className="canva-nav-btn"
-            >
-              {brandKit ? "Switch brand" : "Add brand kit"}
-            </button>
           </>
         )}
       </nav>
