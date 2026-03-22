@@ -23,7 +23,7 @@ const IMAGE_MODES: { value: ImageMode; label: string; tooltip: string }[] = [
 ];
 
 export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
-  const { brandKit, setShowBrandSetup, addImageElement, updateCanvasImageScore, canvasElements } = useStore();
+  const { brandKit, brandExtracting, setShowBrandSetup, addImageElement, updateCanvasImageScore, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
   const [imageMode, setImageMode] = useState<ImageMode>("hero");
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -226,18 +226,24 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
             ) : (
               <button
                 onClick={() => setShowBrandSetup(true)}
+                disabled={brandExtracting}
                 style={{
                   display: "flex", alignItems: "center", gap: 4,
-                  background: "none", border: "1px dashed var(--canva-purple-200)",
+                  background: brandExtracting ? "var(--canva-purple-50)" : "none",
+                  border: "1px dashed var(--canva-purple-200)",
                   borderRadius: "var(--radius-pill)", padding: "2px 8px",
-                  cursor: "pointer", flexShrink: 0,
+                  cursor: brandExtracting ? "default" : "pointer", flexShrink: 0,
                 }}
               >
-                <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-400)" />
-                </svg>
+                {brandExtracting ? (
+                  <div className="canva-loading-dot" style={{ width: 6, height: 6, flexShrink: 0 }} />
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-400)" />
+                  </svg>
+                )}
                 <span style={{ fontSize: 10, color: "var(--canva-purple-500)", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
-                  Add brand kit
+                  {brandExtracting ? "Extracting…" : "Add brand kit"}
                 </span>
               </button>
             )}
