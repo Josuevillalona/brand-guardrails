@@ -728,11 +728,12 @@ export function CanvasWorkspace() {
           {isEmpty && (
             <div
               className="flex flex-col items-center justify-center"
+              onClick={(e) => { e.stopPropagation(); openGenerator(); }}
               style={{
                 position: "absolute",
                 inset: 0,
                 gap: "var(--space-3)",
-                pointerEvents: "none",
+                cursor: "pointer",
               }}
             >
               <div style={{
@@ -745,7 +746,11 @@ export function CanvasWorkspace() {
                 justifyContent: "center",
                 fontSize: 24,
                 color: "var(--color-text-muted)",
-              }}>
+                transition: "background 0.15s",
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--canva-purple-50)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "var(--canva-gray-100)")}
+              >
                 +
               </div>
               <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-muted)" }}>

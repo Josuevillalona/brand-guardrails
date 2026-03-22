@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { BrandKit } from "@/types";
 
 interface BrandKitRevealProps {
@@ -72,6 +73,22 @@ export function BrandKitReveal({
   onUpdate,
 }: BrandKitRevealProps) {
   const [newProhibited, setNewProhibited] = useState("");
+  const [colorPickerIdx, setColorPickerIdx] = useState<number | null>(null);
+  const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const [draftHex, setDraftHex] = useState("");
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (colorPickerIdx === null) return;
+    function onDown(e: MouseEvent) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerIdx(null);
+        setColorPickerPos(null);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [colorPickerIdx]);
 
   const showName   = revealedCount >= 1;
   const showVisual = revealedCount >= revealVisual;
@@ -109,80 +126,28 @@ export function BrandKitReveal({
       }}>
         <p style={sectionLabel}>Brand Colours</p>
 
-        {/* Large palette strip */}
-        <div style={{ display: "flex", gap: 3, marginBottom: "var(--space-4)", borderRadius: 8, overflow: "hidden" }}>
+        {/* Clickable palette strip — each tile opens the color picker */}
+        <div style={{ display: "flex", gap: 3, borderRadius: 8, overflow: "hidden" }}>
           {brandKit.colors.map((c, i) => (
-            <div key={i} style={{
-              flex: 1, height: 48, background: c.hex,
-              opacity: revealedCount >= 2 + i ? 1 : 0,
-              transition: "opacity 0.2s ease",
-            }} />
+            <button
+              key={i}
+              onClick={(e) => {
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setColorPickerIdx(i);
+                setDraftHex(c.hex);
+                setColorPickerPos({ x: r.left, y: r.bottom + 6 });
+              }}
+              title={c.hex}
+              style={{
+                flex: 1, height: 52, background: c.hex,
+                border: "none", padding: 0, cursor: "pointer",
+                opacity: revealedCount >= 2 + i ? 1 : 0,
+                transition: "opacity 0.2s ease, filter 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.filter = "brightness(0.88)")}
+              onMouseLeave={e => (e.currentTarget.style.filter = "none")}
+            />
           ))}
-        </div>
-
-        {/* Editable color rows */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-          {brandKit.colors.map((color, i) => {
-            const visible = revealedCount >= 2 + i;
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex", alignItems: "center", gap: "var(--space-3)",
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? "translateY(0)" : "translateY(6px)",
-                  transition: "opacity 0.2s ease, transform 0.2s ease",
-                }}
-              >
-                {/* Swatch */}
-                <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: color.hex, border: "1px solid rgba(0,0,0,0.1)", flexShrink: 0 }} />
-
-                {/* Name + hex editable */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <input
-                    defaultValue={color.descriptiveName}
-                    onBlur={(e) => {
-                      const updated = brandKit.colors.map((c, ci) =>
-                        ci === i ? { ...c, descriptiveName: e.target.value.trim() } : c
-                      );
-                      onUpdate({ colors: updated });
-                    }}
-                    onFocus={focusStyle}
-                    placeholder="Colour name"
-                    style={{ ...fieldInput, fontWeight: "var(--weight-medium)", marginBottom: 4 }}
-                  />
-                  <input
-                    defaultValue={color.hex}
-                    maxLength={7}
-                    onBlur={(e) => {
-                      let hex = e.target.value.trim();
-                      if (!hex.startsWith("#")) hex = "#" + hex;
-                      if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-                        const updated = brandKit.colors.map((c, ci) =>
-                          ci === i ? { ...c, hex } : c
-                        );
-                        onUpdate({ colors: updated });
-                      } else {
-                        e.target.value = color.hex;
-                      }
-                    }}
-                    onFocus={focusStyle}
-                    placeholder="#000000"
-                    style={{ ...fieldInput, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-text-muted)" }}
-                  />
-                </div>
-
-                {/* Remove */}
-                {brandKit.colors.length > 1 && (
-                  <button
-                    onClick={() => onUpdate({ colors: brandKit.colors.filter((_, ci) => ci !== i) })}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0, opacity: 0.6 }}
-                    title="Remove colour"
-                  >×</button>
-                )}
-              </div>
-            );
-          })}
         </div>
       </div>
 
@@ -275,6 +240,67 @@ export function BrandKitReveal({
           </div>
         </div>
       </RevealItem>
+
+      {/* ── Color picker portal ── */}
+      {colorPickerIdx !== null && colorPickerPos && typeof document !== "undefined" && createPortal(
+        <div
+          ref={colorPickerRef}
+          style={{
+            position: "fixed",
+            top: colorPickerPos.y,
+            left: colorPickerPos.x,
+            zIndex: 9999,
+            background: "#fff",
+            borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)",
+            padding: 16,
+            width: 200,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            border: "1px solid var(--color-border-default)",
+          }}
+        >
+          <div style={{ position: "relative", width: "100%", height: 80, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.08)", background: draftHex }}>
+            <input
+              type="color"
+              value={draftHex.startsWith("#") && draftHex.length === 7 ? draftHex : "#000000"}
+              onChange={(e) => setDraftHex(e.target.value)}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "crosshair" }}
+            />
+            <div style={{ position: "absolute", bottom: 6, right: 6, fontSize: 10, color: "white", background: "rgba(0,0,0,0.4)", padding: "2px 6px", borderRadius: 4, pointerEvents: "none", fontFamily: "var(--font-mono)" }}>
+              click to pick
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--color-border-default)", borderRadius: 6, padding: "6px 10px", background: "var(--canva-gray-50)" }}>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>#</span>
+            <input
+              value={draftHex.replace(/^#/, "")}
+              onChange={(e) => setDraftHex("#" + e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6))}
+              maxLength={6}
+              placeholder="000000"
+              style={{ flex: 1, border: "none", background: "transparent", fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", outline: "none", letterSpacing: "0.05em" }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { setColorPickerIdx(null); setColorPickerPos(null); }}
+              style={{ flex: 1, padding: "6px 0", border: "1px solid var(--color-border-default)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--color-text-secondary)", fontFamily: "var(--font-sans)" }}
+            >Cancel</button>
+            <button
+              onClick={() => {
+                if (draftHex.length === 7 && colorPickerIdx !== null) {
+                  onUpdate({ colors: brandKit.colors.map((c, ci) => ci === colorPickerIdx ? { ...c, hex: draftHex } : c) });
+                }
+                setColorPickerIdx(null);
+                setColorPickerPos(null);
+              }}
+              style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: 6, background: "var(--canva-purple-500)", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 600, fontFamily: "var(--font-sans)" }}
+            >Apply</button>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );
