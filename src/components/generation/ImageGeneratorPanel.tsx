@@ -25,7 +25,7 @@ const IMAGE_MODES: { value: ImageMode; label: string; tooltip: string }[] = [
 export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   const { brandKit, brandExtracting, setShowBrandSetup, addImageElement, updateCanvasImageScore, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
-  const [imageMode, setImageMode] = useState<ImageMode>("hero");
+  const [imageMode, setImageMode] = useState<ImageMode>("supporting");
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
   const [generatingAlt, setGeneratingAlt] = useState(false);
@@ -310,6 +310,25 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
               );
             })}
           </div>
+        )}
+
+        {/* Mode tooltip portal */}
+        {hoveredMode && modeTooltipPos && typeof document !== "undefined" && createPortal(
+          <div style={{
+            position: "fixed",
+            left: modeTooltipPos.x,
+            top: modeTooltipPos.y - 8,
+            transform: "translate(-50%, -100%)",
+            background: "var(--color-text-primary)", color: "#fff",
+            fontSize: 11, lineHeight: 1.5,
+            padding: "6px 10px", borderRadius: 6,
+            width: 200, pointerEvents: "none", zIndex: 9999,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.22)",
+            fontFamily: "var(--font-sans)", fontWeight: 400,
+          }}>
+            {IMAGE_MODES.find(m => m.value === hoveredMode)?.tooltip}
+          </div>,
+          document.body
         )}
 
         {/* Mode callout */}
