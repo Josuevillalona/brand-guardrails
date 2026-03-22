@@ -31,9 +31,28 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
     setShowBrandSetup,
   } = useStore();
 
-  const [showGenerator, setShowGenerator] = useState(false);
-  const [showBrand, setShowBrand] = useState(false);
-  const [showLayers, setShowLayers] = useState(true);
+  type PanelType = "generator" | "brand" | "layers" | null;
+  const PANEL_MS = 180;
+  const [activePanel, setActivePanel]       = useState<PanelType>("layers");
+  const [displayedPanel, setDisplayedPanel] = useState<PanelType>("layers");
+  const [panelVisible, setPanelVisible]     = useState(true);
+
+  function switchPanel(next: PanelType) {
+    const target = next === activePanel ? null : next;
+    if (target === activePanel) return;
+    setPanelVisible(false);
+    setTimeout(() => { setActivePanel(target); setDisplayedPanel(target); setPanelVisible(true); }, PANEL_MS);
+  }
+
+  const showGenerator = activePanel === "generator";
+  const showBrand     = activePanel === "brand";
+  const showLayers    = activePanel === "layers";
+
+  function openGenerator() { switchPanel("generator"); }
+  function openBrand()     { switchPanel("brand"); }
+  function openLayers()    { switchPanel("layers"); }
+  function closeAll()      { switchPanel(activePanel); } // toggles current off
+
   const [panelWidth, setPanelWidth] = useState(340);
   const [editingBrand, setEditingBrand] = useState(false);
   const [newProhibited, setNewProhibited] = useState("");
@@ -55,10 +74,6 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
     return () => document.removeEventListener("mousedown", onDown);
   }, [colorPickerIdx]);
 
-  function openGenerator() { setShowGenerator(true); setShowBrand(false); setShowLayers(false); }
-  function openBrand()     { setShowBrand(true); setShowGenerator(false); setShowLayers(false); }
-  function openLayers()    { setShowLayers(true); setShowGenerator(false); setShowBrand(false); }
-  function closeAll()      { setShowGenerator(false); setShowBrand(false); setShowLayers(false); }
   const panelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const [showScoreTooltip, setShowScoreTooltip] = useState(false);
@@ -274,10 +289,19 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
         </IconItem>
       </div>
 
-      {/* ── Left panel — layers OR brand OR generator (Magic Media style) ── */}
-      {/* Always mounted — display:none hides without unmounting, preserving session state */}
-      <div style={{ display: showGenerator ? "contents" : "none" }}>
-        <ImageGeneratorPanel onClose={closeAll} width={panelWidth} />
+      {/* ── Left panel — animated container ── */}
+      {/* Generator always mounted (display:none) to preserve generation state */}
+      <div style={{
+        display: displayedPanel ? "flex" : "none",
+        opacity: panelVisible ? 1 : 0,
+        transform: panelVisible ? "translateX(0)" : "translateX(-8px)",
+        transition: `opacity ${PANEL_MS}ms ease, transform ${PANEL_MS}ms ease`,
+        flexShrink: 0,
+        height: "100%",
+      }}>
+        {/* Generator panel — always mounted, hidden when inactive */}
+        <div style={{ display: displayedPanel === "generator" ? "flex" : "none", height: "100%" }}>
+          <ImageGeneratorPanel onClose={closeAll} width={panelWidth} />
         {/* Resize handle — drag right edge to widen/narrow the panel */}
           <div
             onMouseDown={(e) => {
@@ -306,10 +330,11 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
               ))}
             </div>
           </div>
-      </div>
-      {/* ── Brand Kit panel ── */}
-      {showBrand && (
-        <>
+        </div>{/* end generator inner */}
+
+        {/* ── Brand Kit panel ── */}
+        {displayedPanel === "brand" && (
+          <>
         <div style={{
           width: panelWidth,
           flexShrink: 0,
@@ -673,9 +698,10 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
         )}
 
         </>
-      )}
+        )}{/* end brand panel */}
 
-      <div className="canva-panel" style={{ width: panelWidth, display: showLayers ? undefined : "none" }}>
+        {/* ── Layers panel ── */}
+        <div className="canva-panel" style={{ width: panelWidth, display: displayedPanel === "layers" ? undefined : "none" }}>
         <div className="canva-panel-header">
           <p className="canva-panel-label">Layers</p>
         </div>
@@ -717,10 +743,9 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
           )}
         </div>
 
-      </div>
+      </div>{/* end layers panel */}
 
-      {/* Layers resize handle */}
-      {showLayers && (
+        {/* Shared resize handle — shown for any active panel */}
         <div
           onMouseDown={(e) => {
             e.preventDefault();
@@ -743,7 +768,7 @@ export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle>(function Canvas
             ))}
           </div>
         </div>
-      )}
+      </div>{/* end animated panel wrapper */}
 
       {/* ── Canvas area ── */}
       <div className="canva-canvas-area canva-canvas-area-dots" style={{ position: "relative" }}>
