@@ -823,82 +823,15 @@ function ImageCard({
         padding: "var(--space-1) var(--space-2) var(--space-2)",
         borderTop: "1px solid var(--color-border-subtle)",
       }}>
-        {isOnBrand ? (
-          <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
-            Use this image
+        {(prohibited || (score && !isOnBrand)) ? (
+          <button
+            onClick={onGetAlternative}
+            className="btn-ai"
+            style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)", padding: "6px 8px" }}
+            title={prohibited ? "Re-generate avoiding prohibited elements" : `Improve ${failLabel}`}
+          >
+            ✦ Generate alternative
           </button>
-        ) : prohibited ? (
-          <>
-            <button
-              onClick={onGetAlternative}
-              className="btn-ai"
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                fontSize: "var(--text-xs)",
-                whiteSpace: "normal",
-                lineHeight: 1.3,
-                height: "auto",
-                minHeight: 28,
-                padding: "6px 8px",
-                textAlign: "center",
-              }}
-              title="Re-generate avoiding prohibited elements"
-            >
-              ✦ Regenerate
-            </button>
-            <button
-              onClick={onPlace}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 10,
-                color: "var(--color-text-muted)",
-                fontFamily: "var(--font-sans)",
-                padding: "2px 0",
-                textAlign: "center",
-              }}
-            >
-              Use anyway
-            </button>
-          </>
-        ) : score ? (
-          <>
-            <button
-              onClick={onGetAlternative}
-              className="btn-ai"
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                fontSize: "var(--text-xs)",
-                whiteSpace: "normal",
-                lineHeight: 1.3,
-                height: "auto",
-                minHeight: 28,
-                padding: "6px 8px",
-                textAlign: "center",
-              }}
-              title={`Improve ${failLabel}`}
-            >
-              ✦ Generate alternative
-            </button>
-            <button
-              onClick={onPlace}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 10,
-                color: "var(--color-text-muted)",
-                fontFamily: "var(--font-sans)",
-                padding: "2px 0",
-                textAlign: "center",
-              }}
-            >
-              Use anyway
-            </button>
-          </>
         ) : (
           <button onClick={onPlace} className="btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}>
             Use this image
