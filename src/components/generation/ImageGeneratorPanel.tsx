@@ -346,7 +346,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
               </div>
             ))}
-            {images.slice(0, Math.floor(width / 110) * 2).map((img) => (
+            {images.map((img) => (
               <ImageCard
                 key={img.id}
                 image={img}
