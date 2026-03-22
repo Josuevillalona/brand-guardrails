@@ -8,6 +8,11 @@
 
 /* App-specific overrides and utilities */
 
+/* Match Canva's actual sidebar color — white panel, not gray */
+:root {
+  --color-bg-panel: var(--canva-white);
+}
+
 /* Score dimension bar fill colors */
 .score-dim-bar-fill-good    { background: var(--color-score-on-brand); }
 .score-dim-bar-fill-mid     { background: var(--color-score-needs-review); }

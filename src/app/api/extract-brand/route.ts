@@ -105,7 +105,13 @@ export async function POST(req: NextRequest) {
       ? "Could not access this URL. The site may be blocking scrapers, or your Firecrawl credits may be exhausted. Try a different URL or check your Firecrawl dashboard."
       : raw.includes("401") || raw.includes("Unauthorized")
       ? "Firecrawl API key is invalid or expired. Check FIRECRAWL_API_KEY in your environment."
-      : raw;
+      : raw.includes("400")
+      ? "The URL couldn't be processed. Make sure it's a valid, publicly accessible website (e.g. https://yourcompany.com)."
+      : raw.includes("429")
+      ? "Too many requests — Firecrawl rate limit hit. Wait a moment and try again."
+      : raw.includes("ENOTFOUND") || raw.includes("ECONNREFUSED")
+      ? "Couldn't reach that URL. Check that the address is correct and the site is publicly accessible."
+      : "Something went wrong extracting the brand kit. Try again or use a different URL.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -53,7 +53,9 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
 
   async function handleExtract(e: React.FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
+    const raw = url.trim();
+    if (!raw) return;
+    const normalizedUrl = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     setBrandExtracting(true);
     setBrandError(null);
     setRevealedCount(0);
@@ -61,7 +63,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
       const res = await fetch("/api/extract-brand", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Extraction failed");
@@ -87,31 +89,18 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
 
   const inner = (
     <>
-        {/* Modal X button */}
-        {isModal && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-2)" }}>
-            <button
-              onClick={onDismiss}
-              className="btn-icon"
-              style={{ fontSize: 20, width: 32, height: 32 }}
-              aria-label="Close"
-            >
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Header */}
-        <div style={{ marginBottom: "var(--space-6)", textAlign: "center" }}>
+        <div style={{ marginBottom: "var(--space-6)" }}>
           <h1 style={{
-            fontSize: "var(--text-2xl)",
+            fontSize: "var(--text-xl)",
             fontWeight: "var(--weight-bold)",
             color: "var(--color-text-primary)",
             marginBottom: "var(--space-2)",
           }}>
             Set up your Brand Kit
           </h1>
-          <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-secondary)" }}>
+          <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: "var(--leading-normal)" }}>
             Enter your website URL. We&apos;ll extract your brand colors, style, mood, and guidelines automatically.
           </p>
           {/* Skip link — only on initial full-page flow */}
@@ -139,7 +128,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
         <form onSubmit={handleExtract} style={{ marginBottom: "var(--space-6)" }}>
           <div className="flex gap-2u">
             <input
-              type="url"
+              type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://yourcompany.com"
@@ -156,13 +145,26 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
             </button>
           </div>
           {brandError && (
-            <p style={{
-              marginTop: "var(--space-2)",
-              fontSize: "var(--text-sm)",
-              color: "var(--color-score-off-brand)",
+            <div style={{
+              marginTop: "var(--space-3)",
+              padding: "var(--space-3) var(--space-4)",
+              background: "var(--color-score-off-bg)",
+              border: "1px solid var(--color-score-off-border)",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              gap: "var(--space-3)",
+              alignItems: "flex-start",
             }}>
-              {brandError}
-            </p>
+              <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⊘</span>
+              <div>
+                <p style={{ margin: "0 0 var(--space-1)", fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-score-off-brand)" }}>
+                  Extraction failed
+                </p>
+                <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", lineHeight: "var(--leading-normal)", opacity: 0.85 }}>
+                  {brandError}
+                </p>
+              </div>
+            </div>
           )}
         </form>
 
@@ -287,7 +289,7 @@ export function BrandSetupPanel({ isModal = false, onDismiss }: BrandSetupPanelP
 
   if (isModal) {
     return (
-      <div style={{ padding: "var(--space-6)" }}>
+      <div style={{ padding: "var(--space-8) var(--space-6) var(--space-6)" }}>
         {inner}
       </div>
     );

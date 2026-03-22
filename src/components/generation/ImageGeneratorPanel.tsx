@@ -23,12 +23,15 @@ const IMAGE_MODES: { value: ImageMode; label: string; description: string }[] = 
 ];
 
 export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
-  const { brandKit, addImageElement, canvasElements } = useStore();
+  const { brandKit, setShowBrandSetup, addImageElement, updateCanvasImageScore, canvasElements } = useStore();
   const [prompt, setPrompt] = useState("");
   const [imageMode, setImageMode] = useState<ImageMode>("supporting");
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [generatingAlt, setGeneratingAlt] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  // Maps generated image id → canvas element id (set when user places image before scoring finishes)
+  const placedCanvasIds = useRef<Map<string, string>>(new Map());
 
   async function generate(
     userPrompt: string,
@@ -37,6 +40,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   ) {
     if (!userPrompt.trim()) return;
     setGenerating(true);
+    setGeneratingAlt(isAlternative);
     setGenError(null);
     try {
       // Same FLUX model for both paths — brand context is the only variable.
@@ -68,6 +72,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       setGenError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
+      setGeneratingAlt(false);
     }
   }
 
@@ -85,6 +90,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       setImages((prev) =>
         prev.map((img) => img.id === id ? { ...img, score, scorePending: false } : img)
       );
+      // If user already placed this image on canvas, push score there too
+      const canvasId = placedCanvasIds.current.get(id);
+      if (canvasId) updateCanvasImageScore(canvasId, score);
     } catch {
       setImages((prev) =>
         prev.map((img) => img.id === id ? { ...img, scorePending: false } : img)
@@ -95,7 +103,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
   function placeOnCanvas(img: GeneratedImage) {
     const existingImages = canvasElements.filter((el) => el.type === "image");
     const offset = existingImages.length * 20;
-    addImageElement({
+    const canvasId = addImageElement({
       type: "image",
       x: 60 + offset,
       y: 60 + offset,
@@ -106,7 +114,8 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       score: img.score,
       scorePending: img.scorePending,
     });
-    // Panel stays open — user can place multiple images or keep browsing
+    // Track mapping so scoreImage can push results back if scoring finishes later
+    if (img.scorePending) placedCanvasIds.current.set(img.id, canvasId);
   }
 
   return (
@@ -115,51 +124,55 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       style={{ width, minWidth: 220, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
     >
       {/* ── Header ── */}
-      <div className="canva-panel-header" style={{ padding: "12px 16px", flexShrink: 0 }}>
-        <p className="canva-panel-label" style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
+      <div className="canva-panel-header" style={{ flexShrink: 0 }}>
+        <p style={{
+          margin: 0,
+          fontSize: "var(--text-base)",
+          fontWeight: "var(--weight-bold)",
+          color: "var(--color-text-primary)",
+        }}>
           Generate image
         </p>
       </div>
+
 
       {/* ── Brand context row (brand-active only) ── */}
       {brandKit && (
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          padding: "8px 16px",
-          background: "#f9f9f9",
-          borderBottom: "1px solid #ebebeb",
+          gap: "var(--space-2)",
+          padding: "var(--space-2) var(--space-4)",
+          background: "var(--canva-gray-50)",
+          borderBottom: "1px solid var(--color-border-default)",
           flexShrink: 0,
         }}>
-          <div style={{ display: "flex", gap: 3 }}>
+          <div style={{ display: "flex", gap: "var(--space-1)" }}>
             {brandKit.colors.slice(0, 3).map((c, i) => (
               <div
                 key={i}
                 title={c.descriptiveName}
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 2,
-                  background: c.hex,
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  flexShrink: 0,
-                }}
+                className="canva-swatch"
+                style={{ width: 12, height: 12, background: c.hex }}
               />
             ))}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 500, color: "#3d3d3d", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--weight-medium)",
+            color: "var(--color-text-primary)",
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
             {brandKit.companyName}
           </span>
-          <span style={{
-            fontSize: 10,
-            padding: "1px 6px",
-            borderRadius: 100,
-            background: "#f0f2ff",
-            border: "1px solid #d4b3fb",
-            color: "#6620c4",
-            fontWeight: 500,
-            flexShrink: 0,
+          <span className="canva-pill" style={{
+            background: "var(--canva-purple-50)",
+            border: "1px solid var(--canva-purple-200)",
+            color: "var(--canva-purple-600)",
+            fontSize: "var(--text-xs)",
           }}>
             active
           </span>
@@ -167,14 +180,16 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
       )}
 
       {/* ── Scrollable middle — image results only ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px 0" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-3) var(--space-3) 0" }}>
 
-        {/* Generation loading skeleton — adapts columns to panel width */}
-        {generating && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 12 }}>
-            {[0, 1].map((i) => (
+        {/* Image grid — skeletons prepended during alternative generation, hidden during fresh generation */}
+        {(images.length > 0 || generating) && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+
+            {/* Skeleton placeholders — top of grid when generating */}
+            {generating && [0, 1].map((i) => (
               <div
-                key={i}
+                key={`skel-${i}`}
                 style={{
                   aspectRatio: "1",
                   borderRadius: "var(--radius-lg)",
@@ -182,7 +197,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 4,
+                  gap: "var(--space-1)",
                 }}
               >
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3}s` }} />
@@ -190,13 +205,9 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                 <div className="canva-loading-dot" style={{ animationDelay: `${i * 0.3 + 0.3}s` }} />
               </div>
             ))}
-          </div>
-        )}
 
-        {/* Image grid — auto-fill columns, newest 4 images */}
-        {images.length > 0 && !generating && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 12 }}>
-            {images.slice(0, Math.floor(width / 110) * 2).map((img) => (
+            {/* Existing images — hidden during new-prompt generation, visible during alternative */}
+            {(!generating || generatingAlt) && images.slice(0, Math.floor(width / 110) * 2).map((img) => (
               <ImageCard
                 key={img.id}
                 image={img}
@@ -214,23 +225,30 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "32px 16px",
-            gap: 8,
+            padding: "var(--space-8) var(--space-4)",
+            gap: "var(--space-3)",
           }}>
             <div style={{
               width: 40,
               height: 40,
-              borderRadius: "50%",
-              background: "var(--canva-gray-100)",
+              borderRadius: "var(--radius-pill)",
+              background: "var(--canva-purple-50)",
+              border: "1px solid var(--canva-purple-200)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: 18,
-              color: "var(--color-text-muted)",
+              color: "var(--canva-purple-500)",
             }}>
               ✦
             </div>
-            <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textAlign: "center", lineHeight: 1.4, margin: 0 }}>
+            <p style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--color-text-muted)",
+              textAlign: "center",
+              lineHeight: "var(--leading-relaxed)",
+              margin: 0,
+            }}>
               {brandKit
                 ? "Describe an image — it'll be generated and scored against your brand kit"
                 : "Describe an image to get started. Add a brand kit to enable scoring."}
@@ -241,13 +259,50 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
 
       {/* ── Bottom — prompt input + actions ── */}
       <div style={{
-        padding: "12px 12px 12px",
+        padding: "var(--space-3)",
         borderTop: "1px solid var(--color-border-subtle)",
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: "var(--space-2)",
       }}>
+        {!brandKit && (
+          <button
+            onClick={() => setShowBrandSetup(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              width: "100%",
+              padding: "var(--space-2) var(--space-3)",
+              background: "var(--canva-purple-50)",
+              border: "1px solid var(--canva-purple-200)",
+              borderRadius: "var(--radius-md)",
+              cursor: "pointer",
+              textAlign: "left",
+              transition: "background 0.15s ease, border-color 0.15s ease",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "var(--canva-purple-100)";
+              e.currentTarget.style.borderColor = "var(--canva-purple-400)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "var(--canva-purple-50)";
+              e.currentTarget.style.borderColor = "var(--canva-purple-200)";
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-500)" />
+            </svg>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--canva-purple-600)", fontWeight: "var(--weight-medium)", lineHeight: 1 }}>
+              Add a brand kit to score and guide generations
+            </span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: "auto", flexShrink: 0 }}>
+              <path d="M4.5 2.5L7.5 6L4.5 9.5" stroke="var(--canva-purple-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
+
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -261,7 +316,7 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           rows={3}
           disabled={generating}
           className="canva-input"
-          style={{ resize: "none", lineHeight: 1.5, width: "100%", fontSize: "var(--text-sm)" }}
+          style={{ resize: "none", lineHeight: "var(--leading-normal)", width: "100%", fontSize: "var(--text-sm)" }}
         />
 
         {genError && (
@@ -270,9 +325,14 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           </p>
         )}
 
-        {/* Intent selector — brand-active only, sits between prompt and generate */}
+        {/* Intent selector — brand-active only */}
         {brandKit && (
-          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+          <div style={{
+            display: "flex",
+            borderRadius: "var(--radius-md)",
+            overflow: "hidden",
+            border: "1px solid var(--color-border-default)",
+          }}>
             {IMAGE_MODES.map((mode, i) => (
               <button
                 key={mode.value}
@@ -280,16 +340,16 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
                 title={mode.description}
                 style={{
                   flex: 1,
-                  padding: "6px 4px",
+                  padding: "var(--space-1) var(--space-1)",
                   border: "none",
-                  borderLeft: i > 0 ? "1px solid #e0e0e0" : "none",
-                  background: imageMode === mode.value ? "#7d2ae7" : "transparent",
-                  color: imageMode === mode.value ? "#fff" : "#757575",
-                  fontSize: 11,
-                  fontWeight: 500,
+                  borderLeft: i > 0 ? `1px solid var(--color-border-default)` : "none",
+                  background: imageMode === mode.value ? "var(--canva-purple-500)" : "transparent",
+                  color: imageMode === mode.value ? "var(--color-text-on-accent)" : "var(--color-text-secondary)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--weight-medium)",
                   fontFamily: "var(--font-sans)",
                   cursor: "pointer",
-                  transition: "background 0.15s, color 0.15s",
+                  transition: "background var(--transition-fast), color var(--transition-fast)",
                 }}
               >
                 {mode.label}
@@ -316,10 +376,13 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
             fontSize: "var(--text-xs)",
             color: "var(--color-text-muted)",
             fontFamily: "var(--font-sans)",
-            padding: "2px 0",
+            padding: "var(--space-1) 0",
             textAlign: "center",
             width: "100%",
+            transition: "color var(--transition-fast)",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
         >
           ← Go back
         </button>
@@ -386,13 +449,12 @@ function ImageCard({
             left: tooltipPos.left,
             width: 260,
             zIndex: 9999,
-            background: "white",
+            background: "var(--color-bg-surface)",
             borderRadius: "var(--radius-lg)",
-            padding: 14,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(0,0,0,0.07)",
-            opacity: 1,
-            transition: "opacity 0.15s ease",
+            padding: "var(--space-4)",
+            boxShadow: "var(--shadow-lg)",
+            border: "1px solid var(--color-border-subtle)",
+            transition: "opacity var(--transition-fast)",
           }}
         >
           <ScoreTooltipCard score={score} />
@@ -431,15 +493,15 @@ function ImageCard({
 
       {/* Scoring skeleton bars — brand images while score is in flight */}
       {!image.noBrandContext && image.scorePending && (
-        <div style={{ padding: "8px 8px 6px", borderTop: "1px solid #f5f5f5" }}>
+        <div style={{ padding: "var(--space-2) var(--space-2) var(--space-1)", borderTop: "1px solid var(--color-border-subtle)" }}>
           {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="shimmer-bar"
               style={{
                 height: 4,
-                borderRadius: 2,
-                marginBottom: i < 2 ? 5 : 0,
+                borderRadius: "var(--radius-pill)",
+                marginBottom: i < 2 ? "var(--space-1)" : 0,
                 width: `${88 - i * 16}%`,
                 animationDelay: `${i * 120}ms`,
               }}
@@ -450,11 +512,11 @@ function ImageCard({
 
       {/* Static explanation row — always visible once scored */}
       {score && !image.scorePending && (
-        <div style={{ padding: "6px 8px", borderTop: "1px solid #f5f5f5" }}>
+        <div style={{ padding: "var(--space-1) var(--space-2)", borderTop: "1px solid var(--color-border-subtle)" }}>
           <span style={{
             display: "block",
-            fontSize: 10,
-            color: "#757575",
+            fontSize: "var(--text-xs)",
+            color: "var(--color-text-secondary)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -468,8 +530,8 @@ function ImageCard({
       <div style={{
         display: "flex",
         flexDirection: "column",
-        gap: 4,
-        padding: "6px 8px 8px",
+        gap: "var(--space-1)",
+        padding: "var(--space-1) var(--space-2) var(--space-2)",
         borderTop: "1px solid var(--color-border-subtle)",
       }}>
         {isOnBrand ? (
@@ -481,7 +543,17 @@ function ImageCard({
             <button
               onClick={onGetAlternative}
               className="btn-ai"
-              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                fontSize: "var(--text-xs)",
+                whiteSpace: "normal",
+                lineHeight: 1.3,
+                height: "auto",
+                minHeight: 28,
+                padding: "6px 8px",
+                textAlign: "center",
+              }}
               title="Re-generate avoiding prohibited elements"
             >
               ✦ Regenerate
@@ -507,10 +579,20 @@ function ImageCard({
             <button
               onClick={onGetAlternative}
               className="btn-ai"
-              style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-xs)" }}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                fontSize: "var(--text-xs)",
+                whiteSpace: "normal",
+                lineHeight: 1.3,
+                height: "auto",
+                minHeight: 28,
+                padding: "6px 8px",
+                textAlign: "center",
+              }}
               title={`Improve ${failLabel}`}
             >
-              ✦ Get on-brand version
+              ✦ Generate alternative
             </button>
             <button
               onClick={onPlace}

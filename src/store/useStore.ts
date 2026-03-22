@@ -39,8 +39,8 @@ interface AppStore {
   // ── Canvas elements ────────────────────────────────────────────────────────
   canvasElements: CanvasElement[];
   selectedElementId: string | null;
-  addTextElement: (partial: Omit<TextElement, "id" | "zIndex">) => void;
-  addImageElement: (partial: Omit<ImageElement, "id" | "zIndex">) => void;
+  addTextElement: (partial: Omit<TextElement, "id" | "zIndex">) => string;
+  addImageElement: (partial: Omit<ImageElement, "id" | "zIndex">) => string;
   updateElement: (id: string, partial: Partial<CanvasElement>) => void;
   removeElement: (id: string) => void;
   selectElement: (id: string | null) => void;
@@ -90,22 +90,27 @@ export const useStore = create<AppStore>((set, get) => ({
 
   addTextElement: (partial) => {
     const maxZ = get().canvasElements.reduce((m, el) => Math.max(m, el.zIndex), 0);
+    const id = uid();
     set((s) => ({
       canvasElements: [
         ...s.canvasElements,
-        { ...partial, id: uid(), zIndex: maxZ + 1, type: "text" } as TextElement,
+        { ...partial, id, zIndex: maxZ + 1, type: "text" } as TextElement,
       ],
+      selectedElementId: id,
     }));
+    return id;
   },
 
   addImageElement: (partial) => {
     const maxZ = get().canvasElements.reduce((m, el) => Math.max(m, el.zIndex), 0);
+    const id = uid();
     set((s) => ({
       canvasElements: [
         ...s.canvasElements,
-        { ...partial, id: uid(), zIndex: maxZ + 1, type: "image" } as ImageElement,
+        { ...partial, id, zIndex: maxZ + 1, type: "image" } as ImageElement,
       ],
     }));
+    return id;
   },
 
   updateElement: (id, partial) =>

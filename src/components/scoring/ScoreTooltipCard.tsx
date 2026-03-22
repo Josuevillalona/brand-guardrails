@@ -33,32 +33,38 @@ export function ScoreTooltipCard({ score }: Props) {
   const prohibited = !score.dimensions.noProhibited;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
 
-      {/* 1. Score circle */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <ScoreCircle score={score} size={44} />
+      {/* 1. Top row — title left, circle right */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)" }}>
+        <p className="canva-panel-label" style={{ margin: 0 }}>
+          Brand Alignment Score
+        </p>
+        <ScoreCircle score={score} size={32} />
       </div>
 
-      {/* 2. Explanation sentence */}
+      {/* 2. Explanation — full width */}
       <p style={{
-        fontSize: "var(--text-xs)",
+        fontSize: "var(--text-sm)",
         color: "var(--color-text-secondary)",
-        lineHeight: 1.5,
+        lineHeight: "var(--leading-normal)",
         margin: 0,
       }}>
         {score.explanation}
       </p>
 
-      {/* 3. All five dimension bars — label, bar, score. No weight percentages. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      {/* 3. Divider */}
+      <div className="canva-divider" style={{ margin: 0 }} />
+
+      {/* 4. Five dimension bars */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
         {DIM_KEYS.map((key) => {
           const val = score.dimensions[key];
           const isFailing = key === score.failingDimension;
           const color = barColor(val);
           return (
             <div key={key}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-1)" }}>
                 <span style={{
                   fontSize: "var(--text-xs)",
                   fontWeight: isFailing ? "var(--weight-bold)" : "var(--weight-medium)",
@@ -70,42 +76,28 @@ export function ScoreTooltipCard({ score }: Props) {
                   fontSize: "var(--text-xs)",
                   fontWeight: "var(--weight-bold)",
                   color,
-                  minWidth: 24,
+                  minWidth: 20,
                   textAlign: "right",
                 }}>
                   {val}
                 </span>
               </div>
-              <div style={{ height: 4, borderRadius: 2, background: "#f0f0f0" }}>
-                <div style={{
-                  height: "100%",
-                  width: `${val}%`,
-                  borderRadius: 2,
-                  background: color,
-                }} />
+              <div className="score-dim-bar">
+                <div
+                  className="score-dim-bar-fill"
+                  style={{ width: `${val}%`, background: color }}
+                />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 4. Prohibited pill — only when failing */}
+      {/* 5. Prohibited pill — only when failing */}
       {prohibited && (
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "5px 10px",
-          borderRadius: 4,
-          background: "var(--color-score-off-bg)",
-          border: "1px solid var(--color-score-off-border)",
-          fontSize: "var(--text-xs)",
-          fontWeight: "var(--weight-bold)",
-          color: "var(--color-score-off-brand)",
-        }}>
-          <span style={{ fontSize: 11 }}>⊘</span>
-          Prohibited element detected
-        </div>
+        <span className="score-badge score-badge-off-brand" style={{ alignSelf: "flex-start", gap: "var(--space-1)" }}>
+          ⊘ Prohibited element detected
+        </span>
       )}
 
     </div>

@@ -42,10 +42,10 @@ export function NoBrandBadge() {
   return <span className="score-badge-neutral">No brand context</span>;
 }
 
-// Circular progress ring — score number centered inside an arc that fills to score/100.
+// White disc with colored progress arc and score number centered inside.
 // Color tracks the same green/amber/red thresholds as the bar components.
 export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: number }) {
-  const strokeWidth = Math.max(3, size * 0.08);
+  const strokeWidth = Math.max(3, Math.round(size * 0.07));
   const r = (size - strokeWidth) / 2;
   const cx = size / 2;
   const cy = size / 2;
@@ -61,11 +61,11 @@ export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: nu
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      {/* 1. Outer white background — badge foundation over images */}
+      {/* 1. White background disc */}
       <circle cx={cx} cy={cy} r={cx - 0.5} fill="white" />
-      {/* 2. Track */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#ebebeb" strokeWidth={strokeWidth} />
-      {/* 3. Progress arc */}
+      {/* 2. Gray track */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--canva-gray-200)" strokeWidth={strokeWidth} />
+      {/* 3. Colored progress arc */}
       <circle
         cx={cx} cy={cy} r={r}
         fill="none"
@@ -76,9 +76,7 @@ export function ScoreCircle({ score, size = 56 }: { score: BrandScore; size?: nu
         strokeLinecap="round"
         transform={`rotate(-90 ${cx} ${cy})`}
       />
-      {/* 4. White inner fill drawn after arc — creates explicit white gap between ring and number */}
-      <circle cx={cx} cy={cy} r={r - strokeWidth / 2 - 1} fill="white" />
-      {/* 5. Score number */}
+      {/* 4. Score number — centered over white background */}
       <text
         x={cx} y={cy}
         textAnchor="middle"
