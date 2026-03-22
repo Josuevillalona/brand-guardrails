@@ -205,10 +205,19 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         </div>
       )}
 
-      {/* ── Scrollable middle — image results only ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-3) var(--space-3) 0" }}>
+      {/* ── Scrollable middle — image results + centered prompt when empty ── */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
+        // When no images: center the prompt block vertically
+        justifyContent: images.length === 0 && !generating ? "center" : "flex-start",
+        padding: images.length === 0 && !generating ? "var(--space-4)" : "var(--space-3) var(--space-3) 0",
+        transition: "padding 0.2s ease",
+      }}>
 
-        {/* Image grid — skeletons prepended during alternative generation, hidden during fresh generation */}
+        {/* Image grid — visible once images exist */}
         {(images.length > 0 || generating) && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
 
@@ -244,269 +253,98 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
           </div>
         )}
 
-        {/* Empty state — before first generation */}
+        {/* ── Prompt block — centered when empty, bottom when has images ── */}
         {images.length === 0 && !generating && (
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "var(--space-8) var(--space-4)",
-            gap: "var(--space-3)",
-          }}>
+          <>
+            {/* Icon + hint text above textarea when first opening */}
             <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: "var(--radius-pill)",
-              background: "var(--canva-purple-50)",
-              border: "1px solid var(--canva-purple-200)",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              color: "var(--canva-purple-500)",
+              gap: "var(--space-3)",
+              marginBottom: "var(--space-4)",
             }}>
-              ✦
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: "var(--radius-pill)",
+                background: "var(--canva-purple-50)",
+                border: "1px solid var(--canva-purple-200)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                color: "var(--canva-purple-500)",
+              }}>
+                ✦
+              </div>
+              <p style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-text-muted)",
+                textAlign: "center",
+                lineHeight: "var(--leading-relaxed)",
+                margin: 0,
+              }}>
+                {brandKit
+                  ? "Describe an image — it'll be generated and scored against your brand kit"
+                  : "Describe an image to get started. Add a brand kit to enable scoring."}
+              </p>
             </div>
-            <p style={{
-              fontSize: "var(--text-xs)",
-              color: "var(--color-text-muted)",
-              textAlign: "center",
-              lineHeight: "var(--leading-relaxed)",
-              margin: 0,
-            }}>
-              {brandKit
-                ? "Describe an image — it'll be generated and scored against your brand kit"
-                : "Describe an image to get started. Add a brand kit to enable scoring."}
-            </p>
-          </div>
+
+            {/* Prompt controls inline */}
+            <PromptControls
+              prompt={prompt}
+              setPrompt={setPrompt}
+              generating={generating}
+              genError={genError}
+              brandKit={!!brandKit}
+              imageMode={imageMode}
+              setImageMode={setImageMode}
+              hoveredMode={hoveredMode}
+              setHoveredMode={setHoveredMode}
+              modeTooltipPos={modeTooltipPos}
+              setModeTooltipPos={setModeTooltipPos}
+              modeHoverTimer={modeHoverTimer}
+              hasImages={images.length > 0}
+              onGenerate={() => generate(prompt)}
+              onClose={onClose}
+              onAddBrand={() => setShowBrandSetup(true)}
+              showAddBrand={!brandKit}
+            />
+          </>
         )}
       </div>
 
-      {/* ── Bottom — prompt input + actions ── */}
-      <div style={{
-        padding: "var(--space-3)",
-        borderTop: "1px solid var(--color-border-subtle)",
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-      }}>
-        {!brandKit && (
-          <button
-            onClick={() => setShowBrandSetup(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-2)",
-              width: "100%",
-              padding: "var(--space-2) var(--space-3)",
-              background: "var(--canva-purple-50)",
-              border: "1px solid var(--canva-purple-200)",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "background 0.15s ease, border-color 0.15s ease",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "var(--canva-purple-100)";
-              e.currentTarget.style.borderColor = "var(--canva-purple-400)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "var(--canva-purple-50)";
-              e.currentTarget.style.borderColor = "var(--canva-purple-200)";
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-500)" />
-            </svg>
-            <span style={{ fontSize: "var(--text-xs)", color: "var(--canva-purple-600)", fontWeight: "var(--weight-medium)", lineHeight: 1 }}>
-              Add a brand kit to score and guide generations
-            </span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: "auto", flexShrink: 0 }}>
-              <path d="M4.5 2.5L7.5 6L4.5 9.5" stroke="var(--canva-purple-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        )}
-
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              generate(prompt);
-            }
-          }}
-          placeholder="Describe the image you want…"
-          rows={3}
-          disabled={generating}
-          className="canva-input"
-          style={{ resize: "none", lineHeight: "var(--leading-normal)", width: "100%", fontSize: "var(--text-sm)" }}
-        />
-
-        {genError && (
-          <div style={{
-            display: "flex", alignItems: "flex-start", gap: "var(--space-2)",
-            padding: "var(--space-2) var(--space-3)",
-            background: "var(--color-score-off-bg)",
-            border: "1px solid var(--color-score-off-border)",
-            borderRadius: "var(--radius-md)",
-          }}>
-            <svg style={{ flexShrink: 0, marginTop: 1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", lineHeight: "var(--leading-relaxed)" }}>
-              {genError}
-            </p>
-          </div>
-        )}
-
-        {/* Intent selector — brand-active only */}
-        {brandKit && (
-          <div style={{
-            display: "flex",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border-default)",
-          }}>
-            {IMAGE_MODES.map((mode, i) => {
-              const isSelected = imageMode === mode.value;
-              const isFirst = i === 0;
-              const isLast = i === IMAGE_MODES.length - 1;
-              const showTooltip = hoveredMode === mode.value;
-              return (
-                <button
-                  key={mode.value}
-                  onClick={() => setImageMode(mode.value)}
-                  style={{
-                    position: "relative",
-                    flex: 1,
-                    padding: "var(--space-1) var(--space-1)",
-                    border: "none",
-                    borderLeft: i > 0 ? `1px solid var(--color-border-default)` : "none",
-                    borderRadius: isFirst
-                      ? "calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px)"
-                      : isLast
-                      ? "0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0"
-                      : 0,
-                    background: isSelected ? "var(--canva-purple-500)" : "transparent",
-                    color: isSelected ? "var(--color-text-on-accent)" : "var(--color-text-secondary)",
-                    fontSize: "var(--text-xs)",
-                    fontWeight: "var(--weight-medium)",
-                    fontFamily: "var(--font-sans)",
-                    cursor: "pointer",
-                    transition: "background var(--transition-fast), color var(--transition-fast)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 3,
-                  }}
-                >
-                  {mode.label}
-                  {/* ⓘ icon with portaled tooltip */}
-                  <span
-                    onMouseEnter={(e) => {
-                      e.stopPropagation();
-                      if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
-                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      modeHoverTimer.current = setTimeout(() => {
-                        setModeTooltipPos({ x: r.left + r.width / 2, y: r.top });
-                        setHoveredMode(mode.value);
-                      }, 300);
-                    }}
-                    onMouseLeave={(e) => {
-                      e.stopPropagation();
-                      if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
-                      setHoveredMode(null);
-                      setModeTooltipPos(null);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      fontSize: 11,
-                      lineHeight: 1,
-                      color: isSelected ? "rgba(255,255,255,0.7)" : "#a0a0a0",
-                      marginLeft: 1,
-                      cursor: "default",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ⓘ
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Mode callout — shown when brand kit active */}
-        {brandKit && (
-          <p style={{
-            margin: 0,
-            fontSize: 10,
-            color: "var(--color-text-muted)",
-            lineHeight: 1.5,
-            letterSpacing: "0.01em",
-          }}>
-            {imageMode === "hero" && "Scores color, render style, composition, and mood at full brand standards."}
-            {imageMode === "supporting" && "Scores brand atmosphere; subject colors stay natural and realistic."}
-            {imageMode === "broll" && "Scores texture, mood, and lighting only — composition is flexible."}
-          </p>
-        )}
-
-        <button
-          onClick={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
-          disabled={generating || (!prompt.trim() && images.length === 0)}
-          className="btn-ai"
-          style={{ width: "100%", justifyContent: "center" }}
-        >
-          {generating ? "Generating…" : images.length > 0 ? "✦ Generate again" : "✦ Generate"}
-        </button>
-
-        <button
-          onClick={onClose}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "var(--text-xs)",
-            color: "var(--color-text-muted)",
-            fontFamily: "var(--font-sans)",
-            padding: "var(--space-1) 0",
-            textAlign: "center",
-            width: "100%",
-            transition: "color var(--transition-fast)",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
-        >
-          ← Go back
-        </button>
-      </div>
-
-      {/* Mode tooltip — portaled to body so it escapes sidebar overflow/clipping */}
-      {hoveredMode && modeTooltipPos && typeof document !== "undefined" && createPortal(
+      {/* ── Bottom bar — prompt + actions once images exist ── */}
+      {(images.length > 0 || generating) && (
         <div style={{
-          position: "fixed",
-          left: modeTooltipPos.x,
-          top: modeTooltipPos.y - 8,
-          transform: "translate(-50%, -100%)",
-          background: "var(--color-text-primary)",
-          color: "#fff",
-          fontSize: 11,
-          lineHeight: 1.5,
-          padding: "6px 10px",
-          borderRadius: 6,
-          width: 200,
-          pointerEvents: "none",
-          zIndex: 9999,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.22)",
-          textAlign: "left",
-          fontFamily: "var(--font-sans)",
-          fontWeight: 400,
+          padding: "var(--space-3)",
+          borderTop: "1px solid var(--color-border-subtle)",
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-2)",
         }}>
-          {IMAGE_MODES.find(m => m.value === hoveredMode)?.tooltip}
-        </div>,
-        document.body
+          <PromptControls
+            prompt={prompt}
+            setPrompt={setPrompt}
+            generating={generating}
+            genError={genError}
+            brandKit={!!brandKit}
+            imageMode={imageMode}
+            setImageMode={setImageMode}
+            hoveredMode={hoveredMode}
+            setHoveredMode={setHoveredMode}
+            modeTooltipPos={modeTooltipPos}
+            setModeTooltipPos={setModeTooltipPos}
+            modeHoverTimer={modeHoverTimer}
+            hasImages={images.length > 0}
+            onGenerate={() => images.length > 0 ? generate(prompt || images[0].userPrompt) : generate(prompt)}
+            onClose={onClose}
+            onAddBrand={() => setShowBrandSetup(true)}
+            showAddBrand={!brandKit}
+          />
+        </div>
       )}
 
       {/* ── Off-brand override reason modal ── */}
@@ -626,6 +464,189 @@ export function ImageGeneratorPanel({ onClose, width = 260 }: Props) {
         document.body
       )}
     </div>
+  );
+}
+
+// ── Shared prompt controls (textarea + mode selector + generate button) ────────
+
+interface PromptControlsProps {
+  prompt: string;
+  setPrompt: (v: string) => void;
+  generating: boolean;
+  genError: string | null;
+  brandKit: boolean;
+  imageMode: ImageMode;
+  setImageMode: (m: ImageMode) => void;
+  hoveredMode: ImageMode | null;
+  setHoveredMode: (m: ImageMode | null) => void;
+  modeTooltipPos: { x: number; y: number } | null;
+  setModeTooltipPos: (p: { x: number; y: number } | null) => void;
+  modeHoverTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  hasImages: boolean;
+  onGenerate: () => void;
+  onClose: () => void;
+  onAddBrand: () => void;
+  showAddBrand: boolean;
+}
+
+function PromptControls({
+  prompt, setPrompt, generating, genError, brandKit,
+  imageMode, setImageMode,
+  hoveredMode, setHoveredMode, modeTooltipPos, setModeTooltipPos, modeHoverTimer,
+  hasImages, onGenerate, onClose, onAddBrand, showAddBrand,
+}: PromptControlsProps) {
+  return (
+    <>
+      {showAddBrand && (
+        <button
+          onClick={onAddBrand}
+          style={{
+            display: "flex", alignItems: "center", gap: "var(--space-2)",
+            width: "100%", padding: "var(--space-2) var(--space-3)",
+            background: "var(--canva-purple-50)", border: "1px solid var(--canva-purple-200)",
+            borderRadius: "var(--radius-md)", cursor: "pointer", textAlign: "left",
+            transition: "background 0.15s ease, border-color 0.15s ease",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--canva-purple-100)"; e.currentTarget.style.borderColor = "var(--canva-purple-400)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--canva-purple-50)"; e.currentTarget.style.borderColor = "var(--canva-purple-200)"; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M7 1L13 7L7 13L1 7L7 1Z" fill="var(--canva-purple-500)" />
+          </svg>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--canva-purple-600)", fontWeight: "var(--weight-medium)", lineHeight: 1 }}>
+            Add a brand kit to score and guide generations
+          </span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: "auto", flexShrink: 0 }}>
+            <path d="M4.5 2.5L7.5 6L4.5 9.5" stroke="var(--canva-purple-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onGenerate(); }
+        }}
+        placeholder="Describe the image you want…"
+        rows={3}
+        disabled={generating}
+        className="canva-input"
+        style={{ resize: "none", lineHeight: "var(--leading-normal)", width: "100%", fontSize: "var(--text-sm)" }}
+      />
+
+      {genError && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: "var(--space-2)",
+          padding: "var(--space-2) var(--space-3)",
+          background: "var(--color-score-off-bg)", border: "1px solid var(--color-score-off-border)",
+          borderRadius: "var(--radius-md)",
+        }}>
+          <svg style={{ flexShrink: 0, marginTop: 1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-score-off-brand)", lineHeight: "var(--leading-relaxed)" }}>
+            {genError}
+          </p>
+        </div>
+      )}
+
+      {brandKit && (
+        <div style={{ display: "flex", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-default)" }}>
+          {IMAGE_MODES.map((mode, i) => {
+            const isSelected = imageMode === mode.value;
+            const isFirst = i === 0;
+            const isLast = i === IMAGE_MODES.length - 1;
+            return (
+              <button
+                key={mode.value}
+                onClick={() => setImageMode(mode.value)}
+                style={{
+                  position: "relative", flex: 1,
+                  padding: "var(--space-1) var(--space-1)", border: "none",
+                  borderLeft: i > 0 ? "1px solid var(--color-border-default)" : "none",
+                  borderRadius: isFirst ? "calc(var(--radius-md) - 1px) 0 0 calc(var(--radius-md) - 1px)" : isLast ? "0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0" : 0,
+                  background: isSelected ? "var(--canva-purple-500)" : "transparent",
+                  color: isSelected ? "var(--color-text-on-accent)" : "var(--color-text-secondary)",
+                  fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)", fontFamily: "var(--font-sans)",
+                  cursor: "pointer",
+                  transition: "background var(--transition-fast), color var(--transition-fast)",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+                }}
+              >
+                {mode.label}
+                <span
+                  onMouseEnter={(e) => {
+                    e.stopPropagation();
+                    if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    modeHoverTimer.current = setTimeout(() => {
+                      setModeTooltipPos({ x: r.left + r.width / 2, y: r.top });
+                      setHoveredMode(mode.value);
+                    }, 300);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.stopPropagation();
+                    if (modeHoverTimer.current) clearTimeout(modeHoverTimer.current);
+                    setHoveredMode(null); setModeTooltipPos(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ fontSize: 11, lineHeight: 1, color: isSelected ? "rgba(255,255,255,0.7)" : "#a0a0a0", marginLeft: 1, cursor: "default", flexShrink: 0 }}
+                >
+                  ⓘ
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {brandKit && (
+        <p style={{ margin: 0, fontSize: 10, color: "var(--color-text-muted)", lineHeight: 1.5, letterSpacing: "0.01em" }}>
+          {imageMode === "hero" && "Scores color, render style, composition, and mood at full brand standards."}
+          {imageMode === "supporting" && "Scores brand atmosphere; subject colors stay natural and realistic."}
+          {imageMode === "broll" && "Scores texture, mood, and lighting only — composition is flexible."}
+        </p>
+      )}
+
+      <button
+        onClick={onGenerate}
+        disabled={generating || (!prompt.trim() && !hasImages)}
+        className="btn-ai"
+        style={{ width: "100%", justifyContent: "center" }}
+      >
+        {generating ? "Generating…" : hasImages ? "✦ Generate again" : "✦ Generate"}
+      </button>
+
+      <button
+        onClick={onClose}
+        style={{
+          background: "none", border: "none", cursor: "pointer",
+          fontSize: "var(--text-xs)", color: "var(--color-text-muted)",
+          fontFamily: "var(--font-sans)", padding: "var(--space-1) 0",
+          textAlign: "center", width: "100%", transition: "color var(--transition-fast)",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+      >
+        ← Go back
+      </button>
+
+      {hoveredMode && modeTooltipPos && typeof document !== "undefined" && createPortal(
+        <div style={{
+          position: "fixed", left: modeTooltipPos.x, top: modeTooltipPos.y - 8,
+          transform: "translate(-50%, -100%)",
+          background: "var(--color-text-primary)", color: "#fff",
+          fontSize: 11, lineHeight: 1.5, padding: "6px 10px", borderRadius: 6,
+          width: 200, pointerEvents: "none", zIndex: 9999,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.22)", textAlign: "left",
+          fontFamily: "var(--font-sans)", fontWeight: 400,
+        }}>
+          {IMAGE_MODES.find(m => m.value === hoveredMode)?.tooltip}
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 
