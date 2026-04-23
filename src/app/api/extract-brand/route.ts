@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import FirecrawlApp from "@mendable/firecrawl-js";
-import { getBrandExtractionPrompt, parseBrandKitResponse } from "@/lib/brand-extractor";
+import { getBrandExtractionPrompt, parseBrandKitResponse, extractCssColors } from "@/lib/brand-extractor";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // Run Firecrawl and screenshot in parallel — don't serialize these
     const [scrapeResult, screenshotBase64] = await Promise.all([
-      firecrawl.scrapeUrl(url, { formats: ["markdown"] }),
+      firecrawl.scrapeUrl(url, { formats: ["markdown", "rawHtml"] }),
       screenshotUrl(url),
     ]);
 
@@ -61,6 +61,9 @@ export async function POST(req: NextRequest) {
     const raw = doc.markdown ?? doc.content ?? "";
     const markdown = raw.slice(0, 12000);
 
+    // Extract hex colors directly from CSS — more accurate than visual sampling
+    const cssColors = extractCssColors((doc as unknown as Record<string, unknown>).rawHtml as string ?? "");
+
     // Build Claude message content conditionally
     // Screenshot comes first so Claude sees visuals before reading text
     type ContentBlock =
@@ -76,15 +79,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const cssColorLine = cssColors.length > 0
+      ? `CSS color palette (extracted from stylesheet — use as ground truth for hex values): ${cssColors.join(", ")}\n\n`
+      : "";
+
     userContent.push({
       type: "text",
-      text: `Website URL: ${url}\n\nScraped markdown:\n\n${markdown}`,
+      text: `${cssColorLine}Website URL: ${url}\n\nScraped markdown:\n\n${markdown}`,
     });
 
     const message = await anthropic.messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 2048,
-      system: getBrandExtractionPrompt(!!screenshotBase64),
+      system: getBrandExtractionPrompt(!!screenshotBase64, cssColors.length > 0),
       messages: [{ role: "user", content: userContent }],
     });
 

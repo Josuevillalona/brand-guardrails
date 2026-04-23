@@ -1,20 +1,74 @@
 import { BrandKit } from "@/types";
 
+function normalizeHex(hex: string): string {
+  const h = hex.replace("#", "").toLowerCase();
+  return h.length === 3
+    ? "#" + h[0] + h[0] + h[1] + h[1] + h[2] + h[2]
+    : "#" + h;
+}
+
+function isNearWhiteOrBlack(hex: string): boolean {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum < 0.05 || lum > 0.95;
+}
+
+/**
+ * Extracts hex color values from raw HTML.
+ * Prioritizes CSS custom properties with color-related names (--color-*, --brand-*, etc.)
+ * as these are intentional brand tokens, then falls back to all hex values in <style> blocks.
+ */
+export function extractCssColors(html: string): string[] {
+  const priority = new Set<string>();
+  const rest = new Set<string>();
+
+  // CSS custom properties with color-related names → highest fidelity brand tokens
+  const cssVarRe = /--[\w-]*(?:color|brand|primary|secondary|accent|bg|background|fill|stroke|theme)[\w-]*\s*:\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = cssVarRe.exec(html)) !== null) priority.add(normalizeHex(m[1]));
+
+  // All hex values inside <style> blocks
+  const styleBlocks = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) ?? [];
+  const hexRe = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+  for (const block of styleBlocks) {
+    while ((m = hexRe.exec(block)) !== null) rest.add(normalizeHex(m[0]));
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const hex of [...Array.from(priority), ...Array.from(rest)]) {
+    if (!seen.has(hex) && !isNearWhiteOrBlack(hex)) {
+      seen.add(hex);
+      result.push(hex);
+    }
+  }
+  return result.slice(0, 20);
+}
+
 /**
  * Returns the Claude system prompt for brand extraction.
  * When a screenshot is available, Claude is instructed to read visual signals from pixels,
  * not from copy. When markdown-only, falls back to text inference.
+ * When cssColors are provided, Claude uses them as ground truth for hex values.
  */
-export function getBrandExtractionPrompt(hasScreenshot: boolean): string {
+export function getBrandExtractionPrompt(hasScreenshot: boolean, hasCssColors: boolean): string {
+  const colorInstruction = hasCssColors
+    ? `- For brand colors: a CSS palette is provided in the user message — these are exact hex values defined by the site's designers. Select the 3–6 most brand-relevant ones from that list and assign descriptive names and roles. Do NOT invent or approximate hex values; only use values from the provided palette.`
+    : `- For brand colors: sample actual hex values from rendered pixels in the screenshot.`;
+
   const visualInstructions = hasScreenshot
     ? `You will receive a SCREENSHOT of the website homepage and its scraped MARKDOWN text.
 
 IMPORTANT — source partitioning:
 - Read ALL visual signals from the SCREENSHOT only:
-  colors (sample actual hex values from rendered pixels), render style, lighting character,
-  shot type conventions in photography, color temperature, saturation level, negative space usage,
-  depth of field in imagery, color grading / post-processing treatment, camera angles used,
-  environmental contexts shown, typography personality (geometric/serif/humanist etc.).
+  render style, lighting character, shot type conventions in photography, color temperature,
+  saturation level, negative space usage, depth of field in imagery, color grading / post-processing
+  treatment, camera angles used, environmental contexts shown, typography personality
+  (geometric/serif/humanist etc.).
+${colorInstruction}
 - Read these fields from the MARKDOWN only:
   companyName, voiceSummary, prohibitedElements (inferred from messaging/positioning), company context.
 - Do NOT infer visual signals from copy. If the copy says "bold and modern", ignore it for color/style.
